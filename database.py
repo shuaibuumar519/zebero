@@ -115,7 +115,7 @@ def init_db():
     """)
 
     # ==========================================
-    # CONTRACT
+    # CONTRACT / UPGRADE PLANS
     # ==========================================
 
     cursor.execute("""
@@ -128,6 +128,22 @@ def init_db():
             status TEXT DEFAULT 'active'
         )
     """)
+
+    cursor.execute("SELECT COUNT(*) FROM contract_plans")
+    if cursor.fetchone()[0] == 0:
+        cursor.executemany(
+            """
+            INSERT INTO contract_plans
+            (name, price, duration, daily_earn, status)
+            VALUES (?, ?, ?, ?, 'active')
+            """,
+            [
+                ("Basic", 1000, 30, 50),
+                ("Silver", 3000, 30, 150),
+                ("Gold", 5000, 30, 300),
+                ("Diamond", 10000, 30, 700),
+            ],
+        )
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_contracts (
@@ -172,5 +188,4 @@ def init_db():
 
 
 def migrate_db():
-    """Extra safety — same as init_db migrations."""
     init_db()
