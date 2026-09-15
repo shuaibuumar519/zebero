@@ -20,38 +20,40 @@ def init_db():
             picture TEXT,
             referred_by TEXT,
             balance REAL DEFAULT 0,
+            commission_balance REAL DEFAULT 0,
             referral_code TEXT UNIQUE,
+            daily_day INTEGER DEFAULT 1,
+            last_daily_claim TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
-    # ------------------------------------------
-    # MIGRATION: add missing users columns
-    # ------------------------------------------
-
     cursor.execute("PRAGMA table_info(users)")
-    user_columns = {
-        row[1]
-        for row in cursor.fetchall()
-    }
+    user_columns = {row[1] for row in cursor.fetchall()}
 
     if "referred_by" not in user_columns:
-        cursor.execute("""
-            ALTER TABLE users
-            ADD COLUMN referred_by TEXT
-        """)
+        cursor.execute("ALTER TABLE users ADD COLUMN referred_by TEXT")
 
     if "balance" not in user_columns:
-        cursor.execute("""
-            ALTER TABLE users
-            ADD COLUMN balance REAL DEFAULT 0
-        """)
+        cursor.execute("ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0")
+
+    if "commission_balance" not in user_columns:
+        cursor.execute(
+            "ALTER TABLE users ADD COLUMN commission_balance REAL DEFAULT 0"
+        )
 
     if "referral_code" not in user_columns:
-        cursor.execute("""
-            ALTER TABLE users
-            ADD COLUMN referral_code TEXT
-        """)
+        cursor.execute("ALTER TABLE users ADD COLUMN referral_code TEXT")
+
+    if "daily_day" not in user_columns:
+        cursor.execute(
+            "ALTER TABLE users ADD COLUMN daily_day INTEGER DEFAULT 1"
+        )
+
+    if "last_daily_claim" not in user_columns:
+        cursor.execute(
+            "ALTER TABLE users ADD COLUMN last_daily_claim TEXT"
+        )
 
     # ==========================================
     # ADMINS
@@ -67,10 +69,8 @@ def init_db():
     """)
 
     cursor.execute("""
-        INSERT OR IGNORE INTO admins
-        (id, username, password)
-        VALUES
-        (1, 'admin', 'admin123')
+        INSERT OR IGNORE INTO admins (id, username, password)
+        VALUES (1, 'admin', 'admin123')
     """)
 
     # ==========================================
@@ -91,21 +91,13 @@ def init_db():
         )
     """)
 
-    # ------------------------------------------
-    # MIGRATION: add missing task columns
-    # ------------------------------------------
-
     cursor.execute("PRAGMA table_info(tasks)")
-    task_columns = {
-        row[1]
-        for row in cursor.fetchall()
-    }
+    task_columns = {row[1] for row in cursor.fetchall()}
 
     if "upgrade_level" not in task_columns:
-        cursor.execute("""
-            ALTER TABLE tasks
-            ADD COLUMN upgrade_level INTEGER DEFAULT 1
-        """)
+        cursor.execute(
+            "ALTER TABLE tasks ADD COLUMN upgrade_level INTEGER DEFAULT 1"
+        )
 
     # ==========================================
     # DAILY REWARDS
@@ -122,27 +114,11 @@ def init_db():
         )
     """)
 
-    conn.commit()
-    conn.close()
-def migrate_db():
-    import sqlite3
-    conn = sqlite3.connect("users.db")
-    c = conn.cursor()
+    # ==========================================
+    # CONTRACT
+    # ==========================================
 
-    for col, typ in [
-        ("commission_balance", "REAL DEFAULT 0"),
-        ("daily_day", "INTEGER DEFAULT 1"),
-        ("last_daily_claim", "TEXT"),
-        ("balance", "REAL DEFAULT 0"),
-        ("referral_code", "TEXT"),
-        ("referred_by", "TEXT"),
-    ]:
-        try:
-            c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
-        except Exception:
-            pass
-
-    c.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS contract_plans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
@@ -153,7 +129,7 @@ def migrate_db():
         )
     """)
 
-    c.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_contracts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -165,7 +141,11 @@ def migrate_db():
         )
     """)
 
-    c.execute("""
+    # ==========================================
+    # WITHDRAW
+    # ==========================================
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS withdrawal_accounts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -176,7 +156,7 @@ def migrate_db():
         )
     """)
 
-    c.execute("""
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS withdrawals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -189,3 +169,8 @@ def migrate_db():
 
     conn.commit()
     conn.close()
+
+
+def migrate_db():
+    """Extra safety — same as init_db migrations."""
+    init_db()
