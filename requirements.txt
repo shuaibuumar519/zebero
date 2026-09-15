@@ -3,3 +3,4 @@ python-dotenv
 requests
 PyJWT
 gunicorn
+psycopg2-binary
