@@ -124,17 +124,28 @@ def init_db():
             name TEXT,
             price REAL,
             duration INTEGER,
-            daily_earn REAL,
+            daily_profit REAL,
             status TEXT DEFAULT 'active'
         )
     """)
+
+    cursor.execute("PRAGMA table_info(contract_plans)")
+    plan_cols = {row[1] for row in cursor.fetchall()}
+
+    if "daily_profit" not in plan_cols:
+        try:
+            cursor.execute(
+                "ALTER TABLE contract_plans ADD COLUMN daily_profit REAL DEFAULT 0"
+            )
+        except Exception:
+            pass
 
     cursor.execute("SELECT COUNT(*) FROM contract_plans")
     if cursor.fetchone()[0] == 0:
         cursor.executemany(
             """
             INSERT INTO contract_plans
-            (name, price, duration, daily_earn, status)
+            (name, price, duration, daily_profit, status)
             VALUES (?, ?, ?, ?, 'active')
             """,
             [
