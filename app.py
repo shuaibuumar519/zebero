@@ -155,6 +155,8 @@ app.config["SESSION_PERMANENT"] = True
 init_db()
 create_deposit_table()
 init_task_history()
+from database import migrate_db
+migrate_db()
 
 
 # ==========================================
@@ -740,4 +742,6 @@ def server_error(error):
 # ==========================================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    app.run(host="0.0.0.0", port=port)

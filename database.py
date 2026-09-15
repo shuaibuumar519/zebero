@@ -124,3 +124,68 @@ def init_db():
 
     conn.commit()
     conn.close()
+def migrate_db():
+    import sqlite3
+    conn = sqlite3.connect("users.db")
+    c = conn.cursor()
+
+    for col, typ in [
+        ("commission_balance", "REAL DEFAULT 0"),
+        ("daily_day", "INTEGER DEFAULT 1"),
+        ("last_daily_claim", "TEXT"),
+        ("balance", "REAL DEFAULT 0"),
+        ("referral_code", "TEXT"),
+        ("referred_by", "TEXT"),
+    ]:
+        try:
+            c.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+        except Exception:
+            pass
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS contract_plans (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            price REAL,
+            duration INTEGER,
+            daily_earn REAL,
+            status TEXT DEFAULT 'active'
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS user_contracts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            plan_id INTEGER,
+            quantity INTEGER DEFAULT 1,
+            start_date TEXT,
+            end_date TEXT,
+            status TEXT DEFAULT 'active'
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS withdrawal_accounts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            bank_name TEXT,
+            account_number TEXT,
+            account_name TEXT,
+            bank_code TEXT
+        )
+    """)
+
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS withdrawals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            account_id INTEGER,
+            amount REAL,
+            status TEXT DEFAULT 'pending',
+            created_at TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
