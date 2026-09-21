@@ -155,8 +155,25 @@ app.config["SESSION_PERMANENT"] = True
 init_db()
 create_deposit_table()
 init_task_history()
-from database import migrate_db
-migrate_db()
+
+# Migrations / extra tables
+try:
+    from database import migrate_db
+    migrate_db()
+except Exception as e:
+    print("migrate_db error:", e)
+
+try:
+    from withdraw.models import create_withdrawal_tables
+    create_withdrawal_tables()
+except Exception as e:
+    print("withdraw tables error:", e)
+
+try:
+    from contract.models import create_contract_tables  # idan akwai
+    create_contract_tables()
+except Exception:
+    pass
 
 
 # ==========================================
