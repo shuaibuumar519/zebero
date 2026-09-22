@@ -299,3 +299,7 @@ def init_db():
     conn.commit()
     cur.close()
     conn.close()
+
+def migrate_db():
+    """Compatibility alias used by app.py"""
+    init_db()
