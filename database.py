@@ -6,27 +6,19 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def get_conn():
-    """
-    Postgres if DATABASE_URL is set, else SQLite.
-    """
+    """Postgres if DATABASE_URL set, else SQLite."""
     if DATABASE_URL and (
         DATABASE_URL.startswith("postgres://")
         or DATABASE_URL.startswith("postgresql://")
     ):
         import psycopg2
-        from psycopg2.extras import RealDictCursor
 
         url = DATABASE_URL
-        # Railway sometimes uses postgres:// — psycopg2 wants postgresql://
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
-
-        # Public Railway proxy needs SSL
         if "sslmode=" not in url:
             url += ("&" if "?" in url else "?") + "sslmode=require"
-
-        conn = psycopg2.connect(url)
-        return conn
+        return psycopg2.connect(url)
 
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
@@ -37,24 +29,12 @@ def _is_postgres(conn):
     return conn.__class__.__module__.startswith("psycopg2")
 
 
-def _execute(conn, sql, params=None):
-    """Run SQL; adapt placeholders if needed."""
-    if params is None:
-        params = ()
-    cur = conn.cursor()
-    # SQLite uses ?, Postgres uses %s — normalize to ?
-    if _is_postgres(conn):
-        sql = sql.replace("?", "%s")
-    cur.execute(sql, params)
-    return cur
-
-
 def init_db():
     conn = get_conn()
     is_pg = _is_postgres(conn)
     cur = conn.cursor()
 
-    # ---------- USERS ----------
+    # ========== USERS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -67,6 +47,8 @@ def init_db():
                 balance REAL DEFAULT 0,
                 commission_balance REAL DEFAULT 0,
                 referral_code TEXT UNIQUE,
+                daily_day INTEGER DEFAULT 1,
+                last_daily_claim TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -82,11 +64,13 @@ def init_db():
                 balance REAL DEFAULT 0,
                 commission_balance REAL DEFAULT 0,
                 referral_code TEXT UNIQUE,
+                daily_day INTEGER DEFAULT 1,
+                last_daily_claim TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
-    # Migrate missing columns (SQLite / simple)
+    # Migrate missing users columns (SQLite)
     if not is_pg:
         cur.execute("PRAGMA table_info(users)")
         cols = {row[1] for row in cur.fetchall()}
@@ -95,14 +79,31 @@ def init_db():
             ("balance", "REAL DEFAULT 0"),
             ("commission_balance", "REAL DEFAULT 0"),
             ("referral_code", "TEXT"),
+            ("daily_day", "INTEGER DEFAULT 1"),
+            ("last_daily_claim", "TEXT"),
         ]:
             if col not in cols:
                 try:
                     cur.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
                 except Exception:
                     pass
+    else:
+        for col, typ in [
+            ("referred_by", "TEXT"),
+            ("balance", "REAL DEFAULT 0"),
+            ("commission_balance", "REAL DEFAULT 0"),
+            ("referral_code", "TEXT"),
+            ("daily_day", "INTEGER DEFAULT 1"),
+            ("last_daily_claim", "TEXT"),
+        ]:
+            try:
+                cur.execute(
+                    f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {typ}"
+                )
+            except Exception:
+                pass
 
-    # ---------- ADMINS ----------
+    # ========== ADMINS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS admins (
@@ -120,7 +121,7 @@ def init_db():
             )
         """)
 
-    # ---------- TASKS ----------
+    # ========== TASKS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -148,7 +149,7 @@ def init_db():
             )
         """)
 
-    # ---------- TASK HISTORY / CLAIMS ----------
+    # ========== TASK HISTORY ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS task_history (
@@ -170,7 +171,7 @@ def init_db():
             )
         """)
 
-    # ---------- DEPOSITS ----------
+    # ========== DEPOSITS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS deposits (
@@ -208,7 +209,7 @@ def init_db():
             )
         """)
 
-    # ---------- WITHDRAWAL ACCOUNTS ----------
+    # ========== WITHDRAWAL ACCOUNTS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawal_accounts (
@@ -232,7 +233,7 @@ def init_db():
             )
         """)
 
-    # ---------- WITHDRAWALS ----------
+    # ========== WITHDRAWALS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawals (
@@ -256,7 +257,7 @@ def init_db():
             )
         """)
 
-    # ---------- UPGRADE / CONTRACT PLANS (minimal) ----------
+    # ========== UPGRADE PLANS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS upgrade_plans (
@@ -264,15 +265,6 @@ def init_db():
                 name TEXT,
                 price REAL,
                 level TEXT,
-                status TEXT DEFAULT 'active'
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS user_upgrades (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER,
-                plan_id INTEGER,
-                quantity INTEGER DEFAULT 1,
                 status TEXT DEFAULT 'active'
             )
         """)
@@ -286,12 +278,75 @@ def init_db():
                 status TEXT DEFAULT 'active'
             )
         """)
+
+    # ========== USER UPGRADES ==========
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_upgrades (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                plan_id INTEGER,
+                quantity INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+    else:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_upgrades (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER,
                 plan_id INTEGER,
                 quantity INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+
+    # ========== USER CONTRACTS (fixes earn 500) ==========
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_contracts (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                plan_id INTEGER,
+                quantity INTEGER DEFAULT 1,
+                start_date TEXT,
+                end_date TEXT,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_contracts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                plan_id INTEGER,
+                quantity INTEGER DEFAULT 1,
+                start_date TEXT,
+                end_date TEXT,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+
+    # ========== CONTRACT PLANS ==========
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS contract_plans (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                price REAL,
+                daily_profit REAL,
+                duration_days INTEGER,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS contract_plans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                price REAL,
+                daily_profit REAL,
+                duration_days INTEGER,
                 status TEXT DEFAULT 'active'
             )
         """)
@@ -300,6 +355,7 @@ def init_db():
     cur.close()
     conn.close()
 
+
 def migrate_db():
-    """Compatibility alias used by app.py"""
+    """Alias used by app.py"""
     init_db()
