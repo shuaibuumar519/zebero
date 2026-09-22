@@ -70,7 +70,7 @@ def init_db():
             )
         """)
 
-    # Migrate missing users columns (SQLite)
+    # Migrate missing users columns
     if not is_pg:
         cur.execute("PRAGMA table_info(users)")
         cols = {row[1] for row in cur.fetchall()}
@@ -301,7 +301,7 @@ def init_db():
             )
         """)
 
-    # ========== USER CONTRACTS (fixes earn 500) ==========
+    # ========== USER CONTRACTS ==========
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_contracts (
@@ -350,6 +350,67 @@ def init_db():
                 status TEXT DEFAULT 'active'
             )
         """)
+
+    # ========== SEED UPGRADE PLANS ==========
+    cur.execute("SELECT COUNT(*) FROM upgrade_plans")
+    row = cur.fetchone()
+    count = row[0] if row else 0
+
+    if count == 0:
+        plans = [
+            ("Basic", 1000, "basic"),
+            ("Silver", 3000, "silver"),
+            ("Gold", 5000, "gold"),
+            ("Diamond", 10000, "diamond"),
+        ]
+        for name, price, level in plans:
+            if is_pg:
+                cur.execute(
+                    """
+                    INSERT INTO upgrade_plans (name, price, level, status)
+                    VALUES (%s, %s, %s, 'active')
+                    """,
+                    (name, price, level),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO upgrade_plans (name, price, level, status)
+                    VALUES (?, ?, ?, 'active')
+                    """,
+                    (name, price, level),
+                )
+
+    # ========== SEED CONTRACT PLANS ==========
+    cur.execute("SELECT COUNT(*) FROM contract_plans")
+    row = cur.fetchone()
+    count = row[0] if row else 0
+
+    if count == 0:
+        contracts = [
+            ("Silver", 5000, 250, 30),
+            ("Gold", 10000, 600, 30),
+            ("Diamond", 20000, 1500, 30),
+        ]
+        for name, price, daily, days in contracts:
+            if is_pg:
+                cur.execute(
+                    """
+                    INSERT INTO contract_plans
+                    (name, price, daily_profit, duration_days, status)
+                    VALUES (%s, %s, %s, %s, 'active')
+                    """,
+                    (name, price, daily, days),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO contract_plans
+                    (name, price, daily_profit, duration_days, status)
+                    VALUES (?, ?, ?, ?, 'active')
+                    """,
+                    (name, price, daily, days),
+                )
 
     conn.commit()
     cur.close()
