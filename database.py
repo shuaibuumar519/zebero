@@ -1,41 +1,61 @@
 import os
 import sqlite3
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-DATABASE = os.environ.get("DATABASE_PATH", "users.db")
-IS_POSTGRES = bool(DATABASE_URL)
+DATABASE = "users.db"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 def get_conn():
-    if IS_POSTGRES:
+    """
+    Postgres if DATABASE_URL is set, else SQLite.
+    """
+    if DATABASE_URL and (
+        DATABASE_URL.startswith("postgres://")
+        or DATABASE_URL.startswith("postgresql://")
+    ):
         import psycopg2
         from psycopg2.extras import RealDictCursor
 
-        # Railway sometimes uses postgres:// 
         url = DATABASE_URL
+        # Railway sometimes uses postgres:// — psycopg2 wants postgresql://
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
 
+        # Public Railway proxy needs SSL
+        if "sslmode=" not in url:
+            url += ("&" if "?" in url else "?") + "sslmode=require"
+
         conn = psycopg2.connect(url)
         return conn
-    else:
-        conn = sqlite3.connect(DATABASE)
-        conn.row_factory = sqlite3.Row
-        return conn
+
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-def _q(sql):
-    """Convert SQLite ? placeholders to Postgres %s"""
-    if IS_POSTGRES:
-        return sql.replace("?", "%s")
-    return sql
+def _is_postgres(conn):
+    return conn.__class__.__module__.startswith("psycopg2")
+
+
+def _execute(conn, sql, params=None):
+    """Run SQL; adapt placeholders if needed."""
+    if params is None:
+        params = ()
+    cur = conn.cursor()
+    # SQLite uses ?, Postgres uses %s — normalize to ?
+    if _is_postgres(conn):
+        sql = sql.replace("?", "%s")
+    cur.execute(sql, params)
+    return cur
 
 
 def init_db():
     conn = get_conn()
+    is_pg = _is_postgres(conn)
     cur = conn.cursor()
 
-    if IS_POSTGRES:
+    # ---------- USERS ----------
+    if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
@@ -44,130 +64,13 @@ def init_db():
                 email TEXT UNIQUE NOT NULL,
                 picture TEXT,
                 referred_by TEXT,
-                balance DOUBLE PRECISION DEFAULT 0,
-                commission_balance DOUBLE PRECISION DEFAULT 0,
+                balance REAL DEFAULT 0,
+                commission_balance REAL DEFAULT 0,
                 referral_code TEXT UNIQUE,
-                daily_day INTEGER DEFAULT 1,
-                last_daily_claim TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS admins (
-                id SERIAL PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        cur.execute("""
-            INSERT INTO admins (id, username, password)
-            VALUES (1, 'admin', 'admin123')
-            ON CONFLICT (id) DO NOTHING
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                description TEXT NOT NULL,
-                reward DOUBLE PRECISION NOT NULL,
-                task_url TEXT NOT NULL,
-                task_type TEXT NOT NULL,
-                upgrade_level INTEGER DEFAULT 1,
-                status TEXT DEFAULT 'active',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS daily_rewards (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER UNIQUE NOT NULL,
-                current_day INTEGER DEFAULT 1,
-                last_claim_date TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS contract_plans (
-                id SERIAL PRIMARY KEY,
-                name TEXT,
-                price DOUBLE PRECISION,
-                duration INTEGER,
-                daily_profit DOUBLE PRECISION,
-                status TEXT DEFAULT 'active'
-            )
-        """)
-        cur.execute("SELECT COUNT(*) FROM contract_plans")
-        row = cur.fetchone()
-        count = row[0] if row else 0
-        if count == 0:
-            cur.execute("""
-                INSERT INTO contract_plans (name, price, duration, daily_profit, status)
-                VALUES
-                ('Basic', 1000, 30, 50, 'active'),
-                ('Silver', 3000, 30, 150, 'active'),
-                ('Gold', 5000, 30, 300, 'active'),
-                ('Diamond', 10000, 30, 700, 'active')
-            """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS user_contracts (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER,
-                plan_id INTEGER,
-                quantity INTEGER DEFAULT 1,
-                start_date TEXT,
-                end_date TEXT,
-                status TEXT DEFAULT 'active'
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS withdrawal_accounts (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER,
-                bank_name TEXT,
-                account_number TEXT,
-                account_name TEXT,
-                bank_code TEXT
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS withdrawals (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER,
-                account_id INTEGER,
-                amount DOUBLE PRECISION,
-                status TEXT DEFAULT 'pending',
-                created_at TEXT
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS deposits (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER NOT NULL,
-                tx_ref TEXT UNIQUE NOT NULL,
-                flw_ref TEXT,
-                amount DOUBLE PRECISION NOT NULL,
-                currency TEXT DEFAULT 'NGN',
-                account_number TEXT,
-                bank_name TEXT,
-                account_name TEXT,
-                status TEXT DEFAULT 'pending',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                expires_at TIMESTAMP,
-                paid_at TIMESTAMP
-            )
-        """)
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS task_history (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER,
-                task_id INTEGER,
-                reward DOUBLE PRECISION,
-                claimed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
     else:
-        # SQLite fallback (local Termux)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -179,17 +82,220 @@ def init_db():
                 balance REAL DEFAULT 0,
                 commission_balance REAL DEFAULT 0,
                 referral_code TEXT UNIQUE,
-                daily_day INTEGER DEFAULT 1,
-                last_daily_claim TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # ... sauran SQLite tables kamar da safe ...
+
+    # Migrate missing columns (SQLite / simple)
+    if not is_pg:
+        cur.execute("PRAGMA table_info(users)")
+        cols = {row[1] for row in cur.fetchall()}
+        for col, typ in [
+            ("referred_by", "TEXT"),
+            ("balance", "REAL DEFAULT 0"),
+            ("commission_balance", "REAL DEFAULT 0"),
+            ("referral_code", "TEXT"),
+        ]:
+            if col not in cols:
+                try:
+                    cur.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
+                except Exception:
+                    pass
+
+    # ---------- ADMINS ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS admins (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS admins (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        """)
+
+    # ---------- TASKS ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id SERIAL PRIMARY KEY,
+                title TEXT,
+                reward REAL DEFAULT 0,
+                task_type TEXT DEFAULT 'normal',
+                upgrade_level TEXT,
+                task_url TEXT,
+                quantity INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT,
+                reward REAL DEFAULT 0,
+                task_type TEXT DEFAULT 'normal',
+                upgrade_level TEXT,
+                task_url TEXT,
+                quantity INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+
+    # ---------- TASK HISTORY / CLAIMS ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS task_history (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                task_id INTEGER,
+                reward REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS task_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                task_id INTEGER,
+                reward REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+    # ---------- DEPOSITS ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS deposits (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                tx_ref TEXT UNIQUE NOT NULL,
+                flw_ref TEXT,
+                amount REAL NOT NULL,
+                currency TEXT DEFAULT 'NGN',
+                account_number TEXT,
+                bank_name TEXT,
+                account_name TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                paid_at TIMESTAMP
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS deposits (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                tx_ref TEXT UNIQUE NOT NULL,
+                flw_ref TEXT,
+                amount REAL NOT NULL,
+                currency TEXT DEFAULT 'NGN',
+                account_number TEXT,
+                bank_name TEXT,
+                account_name TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP,
+                paid_at TIMESTAMP
+            )
+        """)
+
+    # ---------- WITHDRAWAL ACCOUNTS ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS withdrawal_accounts (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                bank_name TEXT,
+                account_number TEXT,
+                account_name TEXT,
+                bank_code TEXT
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS withdrawal_accounts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                bank_name TEXT,
+                account_number TEXT,
+                account_name TEXT,
+                bank_code TEXT
+            )
+        """)
+
+    # ---------- WITHDRAWALS ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS withdrawals (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                account_id INTEGER,
+                amount REAL,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS withdrawals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                account_id INTEGER,
+                amount REAL,
+                status TEXT DEFAULT 'pending',
+                created_at TEXT
+            )
+        """)
+
+    # ---------- UPGRADE / CONTRACT PLANS (minimal) ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS upgrade_plans (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                price REAL,
+                level TEXT,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_upgrades (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                plan_id INTEGER,
+                quantity INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS upgrade_plans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                price REAL,
+                level TEXT,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_upgrades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER,
+                plan_id INTEGER,
+                quantity INTEGER DEFAULT 1,
+                status TEXT DEFAULT 'active'
+            )
+        """)
 
     conn.commit()
     cur.close()
     conn.close()
-
-
-def migrate_db():
-    init_db()
