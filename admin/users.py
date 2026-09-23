@@ -1,19 +1,13 @@
-import sqlite3
-
 from flask import render_template
 
-from config import DATABASE
-
+from database import get_conn
 from auth.admin_required import admin_required
 
 
 @admin_required
 def admin_users():
 
-    conn = sqlite3.connect(DATABASE)
-
-    conn.row_factory = sqlite3.Row
-
+    conn = get_conn()
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -23,7 +17,6 @@ def admin_users():
     """)
 
     users = cursor.fetchall()
-
     conn.close()
 
     return render_template(

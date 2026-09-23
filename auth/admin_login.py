@@ -1,8 +1,13 @@
-import sqlite3
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+)
 
-from flask import Blueprint, render_template, request, redirect, url_for, session
-
-from config import DATABASE
+from database import get_conn
 
 admin_login_bp = Blueprint("admin_login", __name__)
 
@@ -18,13 +23,9 @@ def admin_login():
     if request.method == "POST":
 
         username = request.form.get("username", "").strip()
-
         password = request.form.get("password", "").strip()
 
-        conn = sqlite3.connect(DATABASE)
-
-        conn.row_factory = sqlite3.Row
-
+        conn = get_conn()
         cur = conn.cursor()
 
         cur.execute(
@@ -37,14 +38,20 @@ def admin_login():
         )
 
         admin = cur.fetchone()
-
         conn.close()
 
         if admin:
+            # SQLite Row: admin["id"] ; tuple: admin[0]
+            try:
+                admin_id = admin["id"]
+                admin_username = admin["username"]
+            except (TypeError, KeyError):
+                admin_id = admin[0]
+                admin_username = admin[1]
 
             session["admin_logged_in"] = True
-            session["admin_id"] = admin["id"]
-            session["admin_username"] = admin["username"]
+            session["admin_id"] = admin_id
+            session["admin_username"] = admin_username
 
             return redirect(url_for("admin_dashboard"))
 
