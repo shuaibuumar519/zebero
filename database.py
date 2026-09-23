@@ -1,40 +1,98 @@
 import os
 import sqlite3
 
-DATABASE = "users.db"
+DATABASE = os.getenv("DATABASE", "users.db")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 
+class _PGCursor:
+    """Converts ? to %s for Postgres."""
+
+    def __init__(self, cur):
+        self._cur = cur
+
+    def execute(self, sql, params=None):
+        sql = sql.replace("?", "%s")
+        if params is None:
+            return self._cur.execute(sql)
+        return self._cur.execute(sql, params)
+
+    def fetchone(self):
+        return self._cur.fetchone()
+
+    def fetchall(self):
+        return self._cur.fetchall()
+
+    def __getattr__(self, name):
+        return getattr(self._cur, name)
+
+
+class _PGConn:
+    def __init__(self, conn):
+        self._conn = conn
+
+    def cursor(self):
+        return _PGCursor(self._conn.cursor())
+
+    def execute(self, sql, params=None):
+        cur = self.cursor()
+        cur.execute(sql, params)
+        return cur
+
+    def commit(self):
+        return self._conn.commit()
+
+    def close(self):
+        return self._conn.close()
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+
 def get_conn():
-    """Postgres if DATABASE_URL set, else SQLite."""
     if DATABASE_URL and (
         DATABASE_URL.startswith("postgres://")
         or DATABASE_URL.startswith("postgresql://")
     ):
         import psycopg2
+        from psycopg2.extras import RealDictCursor
 
         url = DATABASE_URL
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
         if "sslmode=" not in url:
             url += ("&" if "?" in url else "?") + "sslmode=require"
-        return psycopg2.connect(url)
+
+        raw = psycopg2.connect(url, cursor_factory=RealDictCursor)
+        return _PGConn(raw)
 
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def _is_postgres(conn):
-    return conn.__class__.__module__.startswith("psycopg2")
+def _is_postgres_url():
+    return bool(
+        DATABASE_URL
+        and (
+            DATABASE_URL.startswith("postgres://")
+            or DATABASE_URL.startswith("postgresql://")
+        )
+    )
 
 
 def init_db():
     conn = get_conn()
-    is_pg = _is_postgres(conn)
+    is_pg = _is_postgres_url()
     cur = conn.cursor()
 
-    # ========== USERS ==========
+    def run(sql):
+        if is_pg:
+            sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+            sql = sql.replace("AUTOINCREMENT", "")
+        cur.execute(sql)
+
+    # USERS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -69,9 +127,6 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-
-    # Migrate missing users columns
-    if not is_pg:
         cur.execute("PRAGMA table_info(users)")
         cols = {row[1] for row in cur.fetchall()}
         for col, typ in [
@@ -87,11 +142,12 @@ def init_db():
                     cur.execute(f"ALTER TABLE users ADD COLUMN {col} {typ}")
                 except Exception:
                     pass
-    else:
+
+    if is_pg:
         for col, typ in [
             ("referred_by", "TEXT"),
-            ("balance", "REAL DEFAULT 0"),
-            ("commission_balance", "REAL DEFAULT 0"),
+            ("balance", "DOUBLE PRECISION DEFAULT 0"),
+            ("commission_balance", "DOUBLE PRECISION DEFAULT 0"),
             ("referral_code", "TEXT"),
             ("daily_day", "INTEGER DEFAULT 1"),
             ("last_daily_claim", "TEXT"),
@@ -103,7 +159,7 @@ def init_db():
             except Exception:
                 pass
 
-    # ========== ADMINS ==========
+    # ADMINS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS admins (
@@ -121,7 +177,7 @@ def init_db():
             )
         """)
 
-    # ========== TASKS ==========
+    # TASKS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -149,7 +205,7 @@ def init_db():
             )
         """)
 
-    # ========== TASK HISTORY ==========
+    # TASK HISTORY
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS task_history (
@@ -171,7 +227,7 @@ def init_db():
             )
         """)
 
-    # ========== DEPOSITS ==========
+    # DEPOSITS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS deposits (
@@ -209,7 +265,7 @@ def init_db():
             )
         """)
 
-    # ========== WITHDRAWAL ACCOUNTS ==========
+    # WITHDRAWAL ACCOUNTS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawal_accounts (
@@ -233,7 +289,7 @@ def init_db():
             )
         """)
 
-    # ========== WITHDRAWALS ==========
+    # WITHDRAWALS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawals (
@@ -257,7 +313,7 @@ def init_db():
             )
         """)
 
-    # ========== UPGRADE PLANS ==========
+    # UPGRADE PLANS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS upgrade_plans (
@@ -279,7 +335,7 @@ def init_db():
             )
         """)
 
-    # ========== USER UPGRADES ==========
+    # USER UPGRADES
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_upgrades (
@@ -301,7 +357,7 @@ def init_db():
             )
         """)
 
-    # ========== USER CONTRACTS ==========
+    # USER CONTRACTS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_contracts (
@@ -327,7 +383,7 @@ def init_db():
             )
         """)
 
-    # ========== CONTRACT PLANS ==========
+    # CONTRACT PLANS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS contract_plans (
@@ -351,72 +407,44 @@ def init_db():
             )
         """)
 
-    # ========== SEED UPGRADE PLANS ==========
-    cur.execute("SELECT COUNT(*) FROM upgrade_plans")
+    # SEED UPGRADE PLANS
+    cur.execute("SELECT COUNT(*) AS c FROM upgrade_plans")
     row = cur.fetchone()
-    count = row[0] if row else 0
-
-    if count == 0:
-        plans = [
+    count = row["c"] if row and hasattr(row, "keys") else (row[0] if row else 0)
+    if not count:
+        for name, price, level in [
             ("Basic", 1000, "basic"),
             ("Silver", 3000, "silver"),
             ("Gold", 5000, "gold"),
             ("Diamond", 10000, "diamond"),
-        ]
-        for name, price, level in plans:
-            if is_pg:
-                cur.execute(
-                    """
-                    INSERT INTO upgrade_plans (name, price, level, status)
-                    VALUES (%s, %s, %s, 'active')
-                    """,
-                    (name, price, level),
-                )
-            else:
-                cur.execute(
-                    """
-                    INSERT INTO upgrade_plans (name, price, level, status)
-                    VALUES (?, ?, ?, 'active')
-                    """,
-                    (name, price, level),
-                )
+        ]:
+            cur.execute(
+                "INSERT INTO upgrade_plans (name, price, level, status) VALUES (?, ?, ?, ?)",
+                (name, price, level, "active"),
+            )
 
-    # ========== SEED CONTRACT PLANS ==========
-    cur.execute("SELECT COUNT(*) FROM contract_plans")
+    # SEED CONTRACT PLANS
+    cur.execute("SELECT COUNT(*) AS c FROM contract_plans")
     row = cur.fetchone()
-    count = row[0] if row else 0
-
-    if count == 0:
-        contracts = [
+    count = row["c"] if row and hasattr(row, "keys") else (row[0] if row else 0)
+    if not count:
+        for name, price, daily, days in [
             ("Silver", 5000, 250, 30),
             ("Gold", 10000, 600, 30),
             ("Diamond", 20000, 1500, 30),
-        ]
-        for name, price, daily, days in contracts:
-            if is_pg:
-                cur.execute(
-                    """
-                    INSERT INTO contract_plans
-                    (name, price, daily_profit, duration_days, status)
-                    VALUES (%s, %s, %s, %s, 'active')
-                    """,
-                    (name, price, daily, days),
-                )
-            else:
-                cur.execute(
-                    """
-                    INSERT INTO contract_plans
-                    (name, price, daily_profit, duration_days, status)
-                    VALUES (?, ?, ?, ?, 'active')
-                    """,
-                    (name, price, daily, days),
-                )
+        ]:
+            cur.execute(
+                """
+                INSERT INTO contract_plans
+                (name, price, daily_profit, duration_days, status)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (name, price, daily, days, "active"),
+            )
 
     conn.commit()
-    cur.close()
     conn.close()
 
 
 def migrate_db():
-    """Alias used by app.py"""
     init_db()
