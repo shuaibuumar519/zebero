@@ -497,13 +497,10 @@ def support():
 @app.route("/admin/dashboard")
 @admin_required
 def admin_dashboard():
-    import sqlite3
-    from datetime import date
-    import os
-    import requests
+    from database import get_conn
 
-    today = str(date.today())
-    conn = sqlite3.connect("users.db")
+    def connect():
+    return get_conn()
     conn.row_factory = sqlite3.Row
 
     all_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
