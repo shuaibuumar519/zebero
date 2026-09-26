@@ -10,7 +10,7 @@
 
 <div class="container">
 
-    <h1>🚀 Upgrade Account</h1>
+    <h1 class="page-title">🚀 Upgrade Account</h1>
 
     <div class="info-card">
         <h2>Unlock Premium Tasks</h2>
@@ -24,40 +24,41 @@
 
     {% for plan in plans %}
     <div class="plan-card">
+
         <div class="plan-header">
             <h3>{{ plan.name }}</h3>
             {% if plan.name == 'Basic' %}
-            <span class="badge">Starter</span>
+            <span class="badge starter">Starter</span>
             {% elif plan.name == 'Silver' %}
-            <span class="badge">Best Value</span>
-            {% elif plan.name == 'Gold' or plan.name == 'Diamond' %}
-            <span class="badge">Premium</span>
+            <span class="badge best">Best Value</span>
+            {% else %}
+            <span class="badge premium">Premium</span>
             {% endif %}
         </div>
 
         <div class="plan-row">
             <span>Price</span>
-            <strong>₦{{ "%.2f"|format(plan.price or 0) }}</strong>
+            <strong class="green">₦{{ "%.2f"|format(plan.price or 0) }}</strong>
         </div>
 
         <div class="plan-row">
             <span>Daily Profit</span>
-            <strong>₦{{ "%.2f"|format(plan.daily_profit or 0) }}</strong>
+            <strong class="green">₦{{ "%.2f"|format(plan.daily_profit or 0) }}</strong>
         </div>
 
         <div class="plan-row">
             <span>Duration</span>
-            <strong>{{ plan.duration_days or 30 }} days</strong>
+            <strong class="green">{{ plan.duration_days or 30 }} days</strong>
         </div>
 
-        <a href="/contract/buy?id={{ plan.id }}&quantity=1" class="btn-upgrade">
+        <a href="/contract/buy?id={{ plan.id }}&quantity=1"
+           class="btn-upgrade">
             Upgrade Now
         </a>
+
     </div>
     {% else %}
-    <div class="empty">
-        No upgrade plans available.
-    </div>
+    <div class="empty">No upgrade plans available.</div>
     {% endfor %}
 
 </div>
