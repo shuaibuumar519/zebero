@@ -6,8 +6,6 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 class _PGCursor:
-    """Converts ? to %s for Postgres."""
-
     def __init__(self, cur):
         self._cur = cur
 
@@ -71,7 +69,7 @@ def get_conn():
     return conn
 
 
-def _is_postgres_url():
+def _is_postgres():
     return bool(
         DATABASE_URL
         and (
@@ -81,18 +79,23 @@ def _is_postgres_url():
     )
 
 
+def _count(cur, table):
+    cur.execute(f"SELECT COUNT(*) AS c FROM {table}")
+    row = cur.fetchone()
+    if row is None:
+        return 0
+    try:
+        return row["c"]
+    except (TypeError, KeyError):
+        return row[0]
+
+
 def init_db():
     conn = get_conn()
-    is_pg = _is_postgres_url()
+    is_pg = _is_postgres()
     cur = conn.cursor()
 
-    def run(sql):
-        if is_pg:
-            sql = sql.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
-            sql = sql.replace("AUTOINCREMENT", "")
-        cur.execute(sql)
-
-    # USERS
+    # ---------- USERS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -110,6 +113,20 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        for col, typ in [
+            ("referred_by", "TEXT"),
+            ("balance", "DOUBLE PRECISION DEFAULT 0"),
+            ("commission_balance", "DOUBLE PRECISION DEFAULT 0"),
+            ("referral_code", "TEXT"),
+            ("daily_day", "INTEGER DEFAULT 1"),
+            ("last_daily_claim", "TEXT"),
+        ]:
+            try:
+                cur.execute(
+                    f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {typ}"
+                )
+            except Exception:
+                pass
     else:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -143,23 +160,7 @@ def init_db():
                 except Exception:
                     pass
 
-    if is_pg:
-        for col, typ in [
-            ("referred_by", "TEXT"),
-            ("balance", "DOUBLE PRECISION DEFAULT 0"),
-            ("commission_balance", "DOUBLE PRECISION DEFAULT 0"),
-            ("referral_code", "TEXT"),
-            ("daily_day", "INTEGER DEFAULT 1"),
-            ("last_daily_claim", "TEXT"),
-        ]:
-            try:
-                cur.execute(
-                    f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {typ}"
-                )
-            except Exception:
-                pass
-
-    # ADMINS
+    # ---------- ADMINS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS admins (
@@ -177,7 +178,7 @@ def init_db():
             )
         """)
 
-    # TASKS
+    # ---------- TASKS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -205,7 +206,7 @@ def init_db():
             )
         """)
 
-    # TASK HISTORY
+    # ---------- TASK HISTORY ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS task_history (
@@ -227,7 +228,7 @@ def init_db():
             )
         """)
 
-    # DEPOSITS
+    # ---------- DEPOSITS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS deposits (
@@ -265,7 +266,7 @@ def init_db():
             )
         """)
 
-    # WITHDRAWAL ACCOUNTS
+    # ---------- WITHDRAWAL ACCOUNTS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawal_accounts (
@@ -289,7 +290,7 @@ def init_db():
             )
         """)
 
-    # WITHDRAWALS
+    # ---------- WITHDRAWALS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawals (
@@ -313,7 +314,7 @@ def init_db():
             )
         """)
 
-    # UPGRADE PLANS
+    # ---------- UPGRADE PLANS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS upgrade_plans (
@@ -335,7 +336,7 @@ def init_db():
             )
         """)
 
-    # USER UPGRADES
+    # ---------- USER UPGRADES ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_upgrades (
@@ -357,7 +358,31 @@ def init_db():
             )
         """)
 
-    # USER CONTRACTS
+    # ---------- CONTRACT PLANS ----------
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS contract_plans (
+                id SERIAL PRIMARY KEY,
+                name TEXT,
+                price REAL,
+                daily_profit REAL,
+                duration_days INTEGER,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS contract_plans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                price REAL,
+                daily_profit REAL,
+                duration_days INTEGER,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+
+    # ---------- USER CONTRACTS ----------
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_contracts (
@@ -383,61 +408,31 @@ def init_db():
             )
         """)
 
-    # CONTRACT PLANS
-    if is_pg:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS contract_plans (
-                id SERIAL PRIMARY KEY,
-                name TEXT,
-                price REAL,
-                daily_profit REAL,
-                duration_days INTEGER,
-                status TEXT DEFAULT 'active'
-            )
-        """)
-    else:
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS contract_plans (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                price REAL,
-                daily_profit REAL,
-                duration_days INTEGER,
-                status TEXT DEFAULT 'active'
-            )
-        """)
-
-    # SEED UPGRADE PLANS
-    cur.execute("SELECT COUNT(*) AS c FROM upgrade_plans")
-    row = cur.fetchone()
-    count = row["c"] if row and hasattr(row, "keys") else (row[0] if row else 0)
-    if not count:
-        for name, price, level in [
-            ("Basic", 1000, "basic"),
-            ("Silver", 3000, "silver"),
-            ("Gold", 5000, "gold"),
-            ("Diamond", 10000, "diamond"),
-        ]:
-            cur.execute(
-                "INSERT INTO upgrade_plans (name, price, level, status) VALUES (?, ?, ?, ?)",
-                (name, price, level, "active"),
-            )
-
-    # SEED CONTRACT PLANS
-    cur.execute("SELECT COUNT(*) AS c FROM contract_plans")
-    row = cur.fetchone()
-    count = row["c"] if row and hasattr(row, "keys") else (row[0] if row else 0)
-    if not count:
+    # ---------- SEED UPGRADE PLANS ----------
+    # Legendary 1000, Silver 3000, Gold 5000, Diamond 10000
+    if _count(cur, "upgrade_plans") == 0:
         for name, price, level in [
             ("Legendary", 1000, "legendary"),
             ("Silver", 3000, "silver"),
             ("Gold", 5000, "gold"),
             ("Diamond", 10000, "diamond"),
-       ]:
-    cur.execute(
-        "INSERT INTO upgrade_plans (name, price, level, status) VALUES (?, ?, ?, ?)",
-        (name, price, level, "active"),
-    )
+        ]:
+            cur.execute(
+                """
+                INSERT INTO upgrade_plans (name, price, level, status)
+                VALUES (?, ?, ?, ?)
+                """,
+                (name, price, level, "active"),
+            )
+
+    # ---------- SEED CONTRACT PLANS (Premium page) ----------
+    if _count(cur, "contract_plans") == 0:
+        for name, price, daily, days in [
+            ("Legendary", 1000, 50, 30),
+            ("Silver", 3000, 150, 30),
+            ("Gold", 5000, 300, 30),
+            ("Diamond", 10000, 700, 30),
+        ]:
             cur.execute(
                 """
                 INSERT INTO contract_plans
@@ -449,6 +444,7 @@ def init_db():
 
     conn.commit()
     conn.close()
+    print("init_db OK")
 
 
 def migrate_db():
