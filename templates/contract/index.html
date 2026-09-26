@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZEBERO Contract</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/contract.css') }}">
 </head>
@@ -10,127 +10,82 @@
 
 <div class="container">
 
-    <h1>📄 Contract</h1>
-
     <div class="balance-card">
-        <p>Available Balance</p>
-        <h2>₦{{ "%.2f"|format(balance) }}</h2>
+        <p class="balance-label">AVAILABLE BALANCE</p>
+        <h1 class="balance-amount">₦{{ "%.2f"|format(balance or 0) }}</h1>
     </div>
 
     <h3 class="section-title">Available Plans</h3>
 
     {% for plan in plans %}
     <div class="plan-card">
-        <div class="plan-header">
-            <h2>{{ plan.name }}</h2>
+
+        <h3 class="plan-name">{{ plan.name }}</h3>
+
+        <div class="plan-row">
+            <span>Investment</span>
+            <strong>₦{{ "%.2f"|format(plan.price or 0) }}</strong>
         </div>
 
-        <div class="plan-body">
-            <p><strong>Investment:</strong> ₦{{ plan.price }}</p>
-            <p><strong>Daily Profit:</strong> ₦{{ plan.daily_profit }}</p>
-            <p><strong>Duration:</strong> {{ plan.duration }} Days</p>
-
-            <div class="quantity-box">
-                <button type="button" onclick="changeQty({{ plan.id }}, -1)">−</button>
-                <input id="qty{{ plan.id }}" type="number" value="1" readonly>
-                <button type="button" onclick="changeQty({{ plan.id }}, 1)">+</button>
-            </div>
-
-            <p>
-                <strong>
-                    Total:
-                    <span id="total{{ plan.id }}">₦{{ plan.price }}</span>
-                </strong>
-            </p>
-
-            <a href="#" class="buy-btn" onclick="buyNow({{ plan.id }}); return false;">
-                Buy Now
-            </a>
+        <div class="plan-row">
+            <span>Daily Profit</span>
+            <strong>₦{{ "%.2f"|format(plan.daily_profit or 0) }}</strong>
         </div>
+
+        <div class="plan-row">
+            <span>Duration</span>
+            <strong>{{ plan.duration_days or 30 }} days</strong>
+        </div>
+
+        <div class="qty-box">
+            <label>Quantity: <span id="qtyLabel{{ plan.id }}">1</span></label>
+            <input
+                type="range"
+                id="qty{{ plan.id }}"
+                min="1"
+                max="10"
+                value="1"
+                oninput="changeQty({{ plan.id }}, this.value)"
+            >
+        </div>
+
+        <div class="plan-row total-row">
+            <span>Total</span>
+            <strong id="total{{ plan.id }}">₦{{ "%.2f"|format(plan.price or 0) }}</strong>
+        </div>
+
+        <button type="button" class="btn-buy" onclick="buyNow({{ plan.id }})">
+            Buy Now
+        </button>
+
     </div>
+    {% else %}
+    <div class="empty">No plans available.</div>
     {% endfor %}
 
-    <h3 class="section-title">My Active Contracts</h3>
-
-    {% if contracts %}
-        {% for contract in contracts %}
-        <div class="active-card">
-            <h2>
-                {{ contract.name }}
-                {% if contract.quantity %} ×{{ contract.quantity }}{% endif %}
-            </h2>
-            <p>Investment: <strong>₦{{ contract.amount }}</strong></p>
-            <p>Daily Profit: <strong>₦{{ contract.daily_profit }}</strong></p>
-            <p>Completed Days: <strong>{{ contract.days_completed }}/{{ contract.duration }}</strong></p>
-            <p>Status: <strong>{{ contract.status }}</strong></p>
-        </div>
-        {% endfor %}
-    {% else %}
-        <div class="empty">
-            You don't have any active contracts.
-        </div>
-    {% endif %}
+    <a href="/upgrade" class="back-link">← Back to Plans</a>
 
 </div>
 
-<!-- BOTTOM NAV (same as Dashboard) -->
-<nav class="bottom-nav">
-    <a href="/dashboard">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 3L4 9v12h5v-7h6v7h5V9l-8-6z"/>
-        </svg>
-        <span>Home</span>
-    </a>
-
-    <a href="/earn">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 7H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H3V9h18v10zm-9-7c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/>
-        </svg>
-        <span>Earn</span>
-    </a>
-
-    <a href="/referral">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-        </svg>
-        <span>Referral</span>
-    </a>
-
-    <a href="/upgrade">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.3 7.2-6.3-4.8-6.3 4.8 2.3-7.2-6-4.8h7.6z"/>
-        </svg>
-        <span>Premium</span>
-    </a>
-</nav>
-
 <script>
 const prices = {
-    {% for plan in plans %}
-    {{ plan.id }}: {{ plan.price }},
-    {% endfor %}
+{% for plan in plans %}
+  {{ plan.id }}: {{ plan.price or 0 }},
+{% endfor %}
 };
 
-function changeQty(id, step) {
-    let input = document.getElementById("qty" + id);
-    let qty = parseInt(input.value);
-    qty += step;
-    if (qty < 1) qty = 1;
-    if (qty > 10) qty = 10;
-    input.value = qty;
-    document.getElementById("total" + id).innerHTML = "₦" + (prices[id] * qty);
+function changeQty(id, val) {
+  const qty = parseInt(val, 10) || 1;
+  document.getElementById("qtyLabel" + id).innerText = qty;
+  const total = (prices[id] || 0) * qty;
+  document.getElementById("total" + id).innerText =
+    "₦" + total.toFixed(2);
 }
 
 function buyNow(id) {
-    let qty = document.getElementById("qty" + id).value;
-    window.location = "/contract/buy?id=" + id + "&quantity=" + qty;
+  const qty = document.getElementById("qty" + id).value || 1;
+  window.location = "/contract/buy?id=" + id + "&quantity=" + qty;
 }
-</script>
-<script>
-history.pushState(null, "", location.href);
-window.onpopstate = function () {
-    window.location.href = "/dashboard";
-};
 </script>
 
 </body>
