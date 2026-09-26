@@ -1,13 +1,7 @@
-import sqlite3
-
-DATABASE = "users.db"
-
+from database import get_conn
 
 def connect():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+    return get_conn()
 
 def get_user_contracts(user_id):
 

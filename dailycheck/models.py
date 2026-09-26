@@ -1,14 +1,7 @@
-import sqlite3
-from datetime import date
-
-DATABASE = "users.db"
-
+from database import get_conn
 
 def connect():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+    return get_conn()
 
 REWARDS = {
     1: 50,

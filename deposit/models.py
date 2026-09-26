@@ -1,16 +1,7 @@
-import sqlite3
-import uuid
-from datetime import datetime, timedelta
+from database import get_conn
 
-DB_NAME = "users.db"
-
-
-def get_db():
-    conn = sqlite3.connect(DB_NAME, timeout=30)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA busy_timeout = 30000")
-    return conn
-
+def connect():
+    return get_conn()
 
 def create_deposit_table():
     conn = get_db()

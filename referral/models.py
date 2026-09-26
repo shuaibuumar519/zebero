@@ -1,15 +1,7 @@
-import sqlite3
-import secrets
-import string
-
-DATABASE = "users.db"
-
+from database import get_conn
 
 def connect():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+    return get_conn()
 
 def ensure_commission_column():
     conn = connect()

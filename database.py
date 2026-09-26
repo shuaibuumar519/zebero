@@ -84,6 +84,7 @@ def init_db():
     is_pg = _is_postgres()
     cur = conn.cursor()
 
+    # USERS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -101,6 +102,20 @@ def init_db():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        for col, typ in [
+            ("referred_by", "TEXT"),
+            ("balance", "DOUBLE PRECISION DEFAULT 0"),
+            ("commission_balance", "DOUBLE PRECISION DEFAULT 0"),
+            ("referral_code", "TEXT"),
+            ("daily_day", "INTEGER DEFAULT 1"),
+            ("last_daily_claim", "TEXT"),
+        ]:
+            try:
+                cur.execute(
+                    f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col} {typ}"
+                )
+            except Exception:
+                pass
     else:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS users (
@@ -134,6 +149,7 @@ def init_db():
                 except Exception:
                     pass
 
+    # ADMINS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS admins (
@@ -151,6 +167,7 @@ def init_db():
             )
         """)
 
+    # TASKS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
@@ -178,6 +195,7 @@ def init_db():
             )
         """)
 
+    # TASK HISTORY
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS task_history (
@@ -199,6 +217,7 @@ def init_db():
             )
         """)
 
+    # DEPOSITS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS deposits (
@@ -236,6 +255,7 @@ def init_db():
             )
         """)
 
+    # WITHDRAWAL ACCOUNTS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawal_accounts (
@@ -259,6 +279,7 @@ def init_db():
             )
         """)
 
+    # WITHDRAWALS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS withdrawals (
@@ -282,6 +303,7 @@ def init_db():
             )
         """)
 
+    # UPGRADE PLANS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS upgrade_plans (
@@ -303,6 +325,7 @@ def init_db():
             )
         """)
 
+    # USER UPGRADES
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_upgrades (
@@ -324,6 +347,7 @@ def init_db():
             )
         """)
 
+    # CONTRACT PLANS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS contract_plans (
@@ -347,6 +371,7 @@ def init_db():
             )
         """)
 
+    # USER CONTRACTS
     if is_pg:
         cur.execute("""
             CREATE TABLE IF NOT EXISTS user_contracts (
@@ -372,7 +397,7 @@ def init_db():
             )
         """)
 
-    # Plans: Basic / Silver / Gold / Diamond
+    # SEED contract_plans
     cur.execute("DELETE FROM contract_plans")
     for name, price, daily, days in [
         ("Basic", 1000, 150, 30),
@@ -389,6 +414,7 @@ def init_db():
             (name, price, daily, days, "active"),
         )
 
+    # SEED upgrade_plans
     cur.execute("DELETE FROM upgrade_plans")
     for name, price, level in [
         ("Basic", 1000, "basic"),
