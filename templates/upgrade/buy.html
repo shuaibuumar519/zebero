@@ -2,86 +2,90 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Buy Plan - ZEBERO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEBERO Buy Plan</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/upgrade.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/contract.css') }}">
 </head>
 <body>
 
-<div class="upgrade-page">
+<div class="container">
 
-    <!-- BALANCE -->
-    <div class="buy-balance">
-        <span>AVAILABLE BALANCE</span>
-        <h2>₦{{ "%.2f"|format(balance) }}</h2>
+    <div class="balance-card">
+        <p class="balance-label">AVAILABLE BALANCE</p>
+        <h1 class="balance-amount">₦{{ "%.2f"|format(balance or 0) }}</h1>
     </div>
 
     <h3 class="section-title">Available Plans</h3>
 
-    <div class="plan-card selected">
+    {% for plan in plans %}
+    <div class="plan-card">
 
-        <div class="plan-top">
-            <h2>{{ plan.name }}</h2>
+        <h3 class="plan-name">{{ plan.name }}</h3>
+
+        <div class="plan-row">
+            <span>Investment</span>
+            <strong>₦{{ "%.2f"|format(plan.price or 0) }}</strong>
         </div>
 
-        <div class="plan-details">
-            <div class="detail-row">
-                <span>Investment</span>
-                <strong>₦{{ "%.2f"|format(plan.price|float) }}</strong>
-            </div>
-            <div class="detail-row">
-                <span>Daily Profit</span>
-                <strong>₦{{ "%.2f"|format(plan.daily_profit|float) }}</strong>
-            </div>
-            <div class="detail-row">
-                <span>Duration</span>
-                <strong>{{ plan.duration }} Days</strong>
-            </div>
+        <div class="plan-row">
+            <span>Daily Profit</span>
+            <strong>₦{{ "%.2f"|format(plan.daily_profit or 0) }}</strong>
         </div>
 
-        <!-- QUANTITY -->
-        <div class="quantity-section">
-            <div class="qty-header">
-                <span>Quantity:</span>
-                <span class="qty-value" id="qtyValue">1</span>
-            </div>
-            <input 
-                type="range" 
-                id="qtyRange" 
-                min="1" 
-                max="10" 
+        <div class="plan-row">
+            <span>Duration</span>
+            <strong>{{ plan.duration_days or plan.duration or 30 }} days</strong>
+        </div>
+
+        <div class="qty-box">
+            <label>Quantity: <span id="qtyLabel{{ plan.id }}">1</span></label>
+            <input
+                type="range"
+                id="qty{{ plan.id }}"
+                min="1"
+                max="10"
                 value="1"
-                oninput="updateQty()"
+                oninput="changeQty({{ plan.id }}, this.value)"
             >
         </div>
 
-        <div class="total-row">
-            Total: <strong id="totalAmount">₦{{ "%.2f"|format(plan.price|float) }}</strong>
+        <div class="plan-row total-row">
+            <span>Total</span>
+            <strong id="total{{ plan.id }}">₦{{ "%.2f"|format(plan.price or 0) }}</strong>
         </div>
 
-        <button class="buy-btn" onclick="buyNow()">
+        <button type="button" class="btn-buy" onclick="buyNow({{ plan.id }})">
             Buy Now
         </button>
 
     </div>
+    {% else %}
+    <div class="empty">No plans available.</div>
+    {% endfor %}
 
     <a href="/upgrade" class="back-link">← Back to Plans</a>
 
 </div>
 
 <script>
-const price = {{ plan.price }};
-const planId = {{ plan.id }};
+const prices = {
+{% for plan in plans %}
+  {{ plan.id }}: {{ plan.price or 0 }},
+{% endfor %}
+};
 
-function updateQty() {
-    const qty = document.getElementById("qtyRange").value;
-    document.getElementById("qtyValue").textContent = qty;
-    document.getElementById("totalAmount").textContent = "₦" + (price * qty).toFixed(2);
+function changeQty(id, val) {
+  const qty = parseInt(val, 10) || 1;
+  document.getElementById("qtyLabel" + id).innerText = qty;
+  const total = (prices[id] || 0) * qty;
+  document.getElementById("total" + id).innerText =
+    "₦" + total.toFixed(2);
 }
 
-function buyNow() {
-    const qty = document.getElementById("qtyRange").value;
-    window.location = "/contract/buy?id=" + planId + "&quantity=" + qty;
+function buyNow(id) {
+  const qty = document.getElementById("qty" + id).value || 1;
+  window.location = "/contract/buy?id=" + id + "&quantity=" + qty;
 }
 </script>
 
