@@ -408,39 +408,38 @@ def init_db():
             )
         """)
 
-    # ---------- SEED UPGRADE PLANS ----------
-    # Legendary 1000, Silver 3000, Gold 5000, Diamond 10000
-    if _count(cur, "upgrade_plans") == 0:
-        for name, price, level in [
-            ("Legendary", 1000, "legendary"),
-            ("Silver", 3000, "silver"),
-            ("Gold", 5000, "gold"),
-            ("Diamond", 10000, "diamond"),
-        ]:
-            cur.execute(
-                """
-                INSERT INTO upgrade_plans (name, price, level, status)
-                VALUES (?, ?, ?, ?)
-                """,
-                (name, price, level, "active"),
-            )
+    # ---------- SEED: always refresh contract plans to your prices ----------
+    cur.execute("DELETE FROM contract_plans")
+    for name, price, daily, days in [
+        ("Basic", 1000, 150, 30),
+        ("Silver", 5000, 800, 30),
+        ("Gold", 10000, 1700, 30),
+        ("Diamond", 50000, 9000, 30),
+    ]:
+        cur.execute(
+            """
+            INSERT INTO contract_plans
+            (name, price, daily_profit, duration_days, status)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (name, price, daily, days, "active"),
+        )
 
-    # ---------- SEED CONTRACT PLANS (Premium page) ----------
-    if _count(cur, "contract_plans") == 0:
-        for name, price, daily, days in [
-            ("Legendary", 1000, 50, 30),
-            ("Silver", 3000, 150, 30),
-            ("Gold", 5000, 300, 30),
-            ("Diamond", 10000, 700, 30),
-        ]:
-            cur.execute(
-                """
-                INSERT INTO contract_plans
-                (name, price, daily_profit, duration_days, status)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (name, price, daily, days, "active"),
-            )
+    # ---------- SEED upgrade_plans (task levels) ----------
+    cur.execute("DELETE FROM upgrade_plans")
+    for name, price, level in [
+        ("Basic", 1000, "basic"),
+        ("Silver", 5000, "silver"),
+        ("Gold", 10000, "gold"),
+        ("Diamond", 50000, "diamond"),
+    ]:
+        cur.execute(
+            """
+            INSERT INTO upgrade_plans (name, price, level, status)
+            VALUES (?, ?, ?, ?)
+            """,
+            (name, price, level, "active"),
+        )
 
     conn.commit()
     conn.close()
