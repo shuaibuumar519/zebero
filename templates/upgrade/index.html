@@ -2,113 +2,84 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Upgrade Account - ZEBERO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZEBERO Upgrade</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/upgrade.css') }}">
 </head>
 <body>
 
-<div class="upgrade-page">
+<div class="container">
 
-    <div class="upgrade-header">
-        <h1>🚀 Upgrade Account</h1>
-    </div>
+    <h1>🚀 Upgrade Account</h1>
 
     <div class="info-card">
         <h2>Unlock Premium Tasks</h2>
         <p>
-            Upgrade your account to access High Paying Tasks, fast cashout, and exclusive referral bonuses.
+            Upgrade your account to access High Paying Tasks,
+            fast cashout, and exclusive referral bonuses.
         </p>
     </div>
 
     <h3 class="section-title">Choose Your Plan</h3>
 
-    <div class="plans-list">
-
-        {% for plan in plans %}
-        <div class="plan-card" onclick="selectPlan(this)">
-
-            <div class="plan-top">
-                <h2>{{ plan.name }}</h2>
-                <span class="plan-tag">
-                    {% if plan.name|lower == 'basic' %}Starter
-                    {% elif plan.name|lower == 'silver' %}Best Value
-                    {% elif plan.name|lower == 'gold' %}Premium
-                    {% else %}Premium{% endif %}
-                </span>
-            </div>
-
-            <div class="plan-details">
-                <div class="detail-row">
-                    <span>Price</span>
-                    <strong>₦{{ "%.2f"|format(plan.price|float) }}</strong>
-                </div>
-                <div class="detail-row">
-                    <span>Daily Profit</span>
-                    <strong>₦{{ "%.2f"|format(plan.daily_profit|float) }}</strong>
-                </div>
-                <div class="detail-row">
-                    <span>Duration</span>
-                    <strong>{{ plan.duration }} Days</strong>
-                </div>
-            </div>
-
-            <a href="/upgrade/buy?id={{ plan.id }}" class="upgrade-btn" onclick="event.stopPropagation()">
-                Upgrade Now
-            </a>
-
+    {% for plan in plans %}
+    <div class="plan-card">
+        <div class="plan-header">
+            <h3>{{ plan.name }}</h3>
+            {% if plan.name == 'Basic' %}
+            <span class="badge">Starter</span>
+            {% elif plan.name == 'Silver' %}
+            <span class="badge">Best Value</span>
+            {% elif plan.name == 'Gold' or plan.name == 'Diamond' %}
+            <span class="badge">Premium</span>
+            {% endif %}
         </div>
-        {% endfor %}
 
-        {% if not plans %}
-        <div class="empty">No upgrade plans available.</div>
-        {% endif %}
+        <div class="plan-row">
+            <span>Price</span>
+            <strong>₦{{ "%.2f"|format(plan.price or 0) }}</strong>
+        </div>
 
+        <div class="plan-row">
+            <span>Daily Profit</span>
+            <strong>₦{{ "%.2f"|format(plan.daily_profit or 0) }}</strong>
+        </div>
+
+        <div class="plan-row">
+            <span>Duration</span>
+            <strong>{{ plan.duration_days or 30 }} days</strong>
+        </div>
+
+        <a href="/contract/buy?id={{ plan.id }}&quantity=1" class="btn-upgrade">
+            Upgrade Now
+        </a>
     </div>
+    {% else %}
+    <div class="empty">
+        No upgrade plans available.
+    </div>
+    {% endfor %}
 
 </div>
 
 <nav class="bottom-nav">
     <a href="/dashboard">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 3L4 9v12h5v-7h6v7h5V9l-8-6z"/>
-        </svg>
-        <span>Home</span>
+        <div>🏠</div>
+        <small>Home</small>
     </a>
     <a href="/earn">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M21 7H3c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H3V9h18v10zm-9-7c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3z"/>
-        </svg>
-        <span>Earn</span>
+        <div>💰</div>
+        <small>Earn</small>
     </a>
     <a href="/referral">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-        </svg>
-        <span>Referral</span>
+        <div>👥</div>
+        <small>Referral</small>
     </a>
     <a href="/upgrade" class="active">
-        <svg class="nav-icon" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2l2.4 7.2h7.6l-6 4.8 2.3 7.2-6.3-4.8-6.3 4.8 2.3-7.2-6-4.8h7.6z"/>
-        </svg>
-        <span>Premium</span>
+        <div>⭐</div>
+        <small>Premium</small>
     </a>
 </nav>
-
-<script>
-function selectPlan(element) {
-    document.querySelectorAll('.plan-card').forEach(card => {
-        card.classList.remove('selected');
-    });
-    element.classList.add('selected');
-}
-</script>
-<script>
-history.pushState(null, "", location.href);
-window.onpopstate = function () {
-    window.location.href = "/dashboard";
-};
-</script>
 
 </body>
 </html>
