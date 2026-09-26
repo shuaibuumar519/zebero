@@ -428,11 +428,16 @@ def init_db():
     row = cur.fetchone()
     count = row["c"] if row and hasattr(row, "keys") else (row[0] if row else 0)
     if not count:
-        for name, price, daily, days in [
-            ("Silver", 5000, 250, 30),
-            ("Gold", 10000, 600, 30),
-            ("Diamond", 20000, 1500, 30),
-        ]:
+        for name, price, level in [
+            ("Legendary", 1000, "legendary"),
+            ("Silver", 3000, "silver"),
+            ("Gold", 5000, "gold"),
+            ("Diamond", 10000, "diamond"),
+       ]:
+    cur.execute(
+        "INSERT INTO upgrade_plans (name, price, level, status) VALUES (?, ?, ?, ?)",
+        (name, price, level, "active"),
+    )
             cur.execute(
                 """
                 INSERT INTO contract_plans
