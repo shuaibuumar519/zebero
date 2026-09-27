@@ -1,229 +1,193 @@
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Arial, sans-serif;
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: #f0f2f5;
-    color: #1a1a1a;
-    min-height: 100vh;
+  background: #f5f7fa;
+  color: #222;
+  padding-bottom: 40px;
 }
 
-.daily-page {
-    max-width: 480px;
-    margin: 0 auto;
-    padding: 16px;
-    padding-bottom: 40px;
+.container {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 16px;
 }
 
-/* HEADER */
-.daily-header {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 22px;
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
 .back-btn {
-    width: 42px;
-    height: 42px;
-    background: #ffffff;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    font-size: 20px;
-    color: #0a8f63;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: #333;
+  font-size: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 
-.header-text h1 {
-    font-size: 20px;
-    font-weight: 700;
-    color: #1a1a1a;
+.page-header h1 {
+  font-size: 20px;
 }
 
-.header-text p {
-    font-size: 13px;
-    color: #6b7280;
-    margin-top: 2px;
+.subtitle {
+  font-size: 13px;
+  color: #888;
 }
 
-/* INFO CARD */
-.info-card {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-    background: linear-gradient(135deg, #0a8f63, #12b981);
-    border-radius: 18px;
-    padding: 18px 16px;
-    color: white;
-    margin-bottom: 22px;
-    box-shadow: 0 10px 24px rgba(10, 143, 99, 0.25);
+.banner {
+  background: #0a8f63;
+  color: #fff;
+  border-radius: 16px;
+  padding: 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 20px;
 }
 
-.info-icon {
-    width: 48px;
-    height: 48px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    flex-shrink: 0;
+.banner-icon {
+  font-size: 28px;
+  background: rgba(255,255,255,0.2);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.info-card strong {
-    display: block;
-    font-size: 16px;
-    margin-bottom: 4px;
+.banner h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
 }
 
-.info-card p {
-    font-size: 13px;
-    opacity: 0.9;
-    line-height: 1.4;
+.banner p {
+  font-size: 13px;
+  opacity: 0.95;
+  line-height: 1.4;
 }
 
-/* DAYS GRID */
 .days-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
 .day-card {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 16px 10px;
-    text-align: center;
-    border: 2px solid transparent;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 10px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+  border: 2px solid transparent;
 }
 
 .day-card.today {
-    border-color: #0a8f63;
-    background: #f0fdf4;
-    box-shadow: 0 0 0 1px #0a8f63, 0 4px 16px rgba(10,143,99,0.15);
+  border-color: #0a8f63;
+  background: #edf9f4;
 }
 
 .day-card.done {
-    background: #ecfdf5;
+  background: #edf9f4;
 }
 
 .day-label {
-    display: block;
-    font-size: 13px;
-    color: #6b7280;
-    margin-bottom: 6px;
-    font-weight: 500;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 6px;
 }
 
 .day-reward {
-    display: block;
-    font-size: 18px;
-    font-weight: 700;
-    color: #0a8f63;
-    margin-bottom: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #0a8f63;
+  margin-bottom: 8px;
 }
 
-.day-status {
-    display: inline-block;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 20px;
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #f0f0f0;
+  color: #888;
 }
 
-.done-badge {
-    background: #0a8f63;
-    color: white;
+.badge.today {
+  background: #0a8f63;
+  color: #fff;
 }
 
-.today-badge {
-    background: #0a8f63;
-    color: white;
+.badge.done {
+  background: #0a8f63;
+  color: #fff;
 }
 
-.locked-badge {
-    background: #f3f4f6;
-    color: #9ca3af;
+.badge.locked {
+  background: #f0f0f0;
+  color: #999;
 }
 
-/* MEGA BONUS */
-.mega-card {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 16px 18px;
-    margin-bottom: 24px;
-    border: 2px solid transparent;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+.day7-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.04);
 }
 
-.mega-card.today {
-    border-color: #0a8f63;
-    background: #f0fdf4;
+.day7-card strong {
+  display: block;
+  margin-bottom: 4px;
 }
 
-.mega-card.done {
-    background: #ecfdf5;
+.day7-card p {
+  font-size: 12px;
+  color: #888;
 }
 
-.mega-left strong {
-    display: block;
-    font-size: 15px;
-    color: #1a1a1a;
+.day7-right {
+  text-align: right;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.mega-left small {
-    font-size: 12px;
-    color: #6b7280;
-}
-
-.mega-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.mega-amount {
-    font-size: 20px;
-    font-weight: 700;
-    color: #0a8f63;
-}
-
-.locked-icon {
-    font-size: 16px;
-    opacity: 0.5;
-}
-
-/* CLAIM BUTTON */
 .claim-btn {
-    display: block;
-    width: 100%;
-    text-align: center;
-    padding: 16px;
-    background: #0a8f63;
-    color: white;
-    border: none;
-    border-radius: 16px;
-    font-size: 16px;
-    font-weight: 600;
-    text-decoration: none;
-    box-shadow: 0 8px 20px rgba(10, 143, 99, 0.25);
+  display: block;
+  width: 100%;
+  text-align: center;
+  padding: 16px;
+  border-radius: 14px;
+  background: #0a8f63;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  box-shadow: 0 6px 16px rgba(10, 143, 99, 0.35);
 }
 
 .claim-btn.disabled {
-    background: #e5e7eb;
-    color: #9ca3af;
-    box-shadow: none;
-    cursor: not-allowed;
+  background: #e0e0e0;
+  color: #888;
+  box-shadow: none;
+  cursor: not-allowed;
 }
