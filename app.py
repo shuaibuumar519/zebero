@@ -498,10 +498,11 @@ def support():
 @admin_required
 def admin_dashboard():
     from database import get_conn
+    from datetime import date
 
-    def connect():
-    return get_conn()
-    conn.row_factory = sqlite3.Row
+    today = str(date.today())
+
+    conn = get_conn()
 
     all_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
 
