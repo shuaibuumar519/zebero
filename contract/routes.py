@@ -34,25 +34,41 @@ def contract_page():
         balance=balance,
     )
 
-
 def buy_page():
     if "user" not in session:
         return redirect("/login")
 
-    plan_id = request.args.get("id")
-    if not plan_id:
-        return redirect("/upgrade")
-
-    plan = get_plan(plan_id)
-    if not plan:
-        return redirect("/upgrade")
-
     user_id = session["user"]["id"]
-    balance = get_balance(user_id)
+    plan_id = request.args.get("id")
+
+    plans = []
+
+    if plan_id:
+        plan = get_plan(plan_id)
+        if plan:
+            plans = [dict(plan)]
+
+    if not plans:
+        # duk plans ko hardcoded
+        rows = get_contract_plans()
+        if rows:
+            plans = [dict(r) for r in rows]
+        else:
+            plans = [
+                {"id": 1, "name": "Basic", "price": 1000, "daily_profit": 150, "duration_days": 30},
+                {"id": 2, "name": "Silver", "price": 5000, "daily_profit": 800, "duration_days": 30},
+                {"id": 3, "name": "Gold", "price": 10000, "daily_profit": 1700, "duration_days": 30},
+                {"id": 4, "name": "Diamond", "price": 50000, "daily_profit": 9000, "duration_days": 30},
+            ]
+
+    try:
+        balance = get_balance(user_id) or 0
+    except Exception:
+        balance = 0
 
     return render_template(
         "upgrade/buy.html",
-        plan=plan,
+        plans=plans,
         balance=balance,
     )
 
