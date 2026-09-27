@@ -47,6 +47,30 @@ def get_withdrawal_accounts(user_id):
     return rows
 
 
+def get_withdrawal_account(account_id, user_id=None):
+    conn = get_conn()
+    if user_id is not None:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM withdrawal_accounts
+            WHERE id = ? AND user_id = ?
+            """,
+            (account_id, user_id),
+        ).fetchone()
+    else:
+        row = conn.execute(
+            """
+            SELECT *
+            FROM withdrawal_accounts
+            WHERE id = ?
+            """,
+            (account_id,),
+        ).fetchone()
+    conn.close()
+    return row
+
+
 def add_withdrawal_account(
     user_id,
     bank_name,
@@ -88,7 +112,10 @@ def create_withdrawal(user_id, account_id, amount):
             datetime.now().isoformat(),
         ),
     )
-    withdrawal_id = cur.lastrowid
+    try:
+        withdrawal_id = cur.lastrowid
+    except Exception:
+        withdrawal_id = None
     conn.commit()
     conn.close()
     return withdrawal_id
