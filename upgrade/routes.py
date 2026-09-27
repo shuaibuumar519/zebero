@@ -11,13 +11,17 @@ from dailycheck.models import (
     update_balance,
 )
 
+from database import get_conn
+
 
 def upgrade_page():
     if "user" not in session:
         return redirect("/login")
 
-    plans = get_contract_plans()
+    # seed if empty (same as buy)
+    _ensure_contract_plans()
 
+    plans = get_contract_plans()
     return render_template(
         "upgrade/index.html",
         plans=plans,
@@ -25,25 +29,76 @@ def upgrade_page():
     )
 
 
+def _ensure_contract_plans():
+    conn = get_conn()
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS contract_plans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT,
+                price REAL,
+                daily_profit REAL,
+                duration_days INTEGER,
+                status TEXT DEFAULT 'active'
+            )
+        """)
+        row = conn.execute(
+            "SELECT COUNT(*) AS c FROM contract_plans"
+        ).fetchone()
+        try:
+            count = row["c"]
+        except Exception:
+            count = row[0] if row else 0
+
+        if not count:
+            for name, price, daily, days in [
+                ("Basic", 1000, 150, 30),
+                ("Silver", 5000, 800, 30),
+                ("Gold", 10000, 1700, 30),
+                ("Diamond", 50000, 9000, 30),
+            ]:
+                conn.execute(
+                    """
+                    INSERT INTO contract_plans
+                    (name, price, daily_profit, duration_days, status)
+                    VALUES (?, ?, ?, ?, 'active')
+                    """,
+                    (name, price, daily, days),
+                )
+            conn.commit()
+    except Exception as e:
+        print("ensure_contract_plans:", e)
+    finally:
+        conn.close()
+
+
 def upgrade_buy_page():
     if "user" not in session:
         return redirect("/login")
 
     user_id = session["user"]["id"]
-    plan_id = request.args.get("id")
+    _ensure_contract_plans()
+
+    conn = get_conn()
+    rows = conn.execute(
+        "SELECT * FROM contract_plans ORDER BY price ASC"
+    ).fetchall()
+    conn.close()
 
     plans = []
+    for r in rows:
+        plans.append({
+            "id": r["id"],
+            "name": r["name"],
+            "price": float(r["price"] or 0),
+            "daily_profit": float(r["daily_profit"] or 0),
+            "duration_days": int(r["duration_days"] or 30),
+        })
 
-    if plan_id:
-        plan = get_plan(plan_id)
-        if plan:
-            plans = [dict(plan)]
-
-    if not plans:
-        rows = get_contract_plans() or []
-        plans = [dict(r) for r in rows]
-
-    balance = get_balance(user_id) or 0
+    try:
+        balance = get_balance(user_id) or 0
+    except Exception:
+        balance = 0
 
     return render_template(
         "upgrade/buy.html",
