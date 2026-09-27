@@ -2,80 +2,72 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Daily Check-In - ZEBERO</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Check-In</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/dailycheck.css') }}">
 </head>
 <body>
 
-<div class="daily-page">
+<div class="container">
 
-    <!-- HEADER -->
-    <header class="daily-header">
+    <header class="page-header">
         <a href="/dashboard" class="back-btn">←</a>
-        <div class="header-text">
+        <div>
             <h1>Daily Check-In</h1>
-            <p>Earn rewards every day</p>
+            <p class="subtitle">Earn rewards every day</p>
         </div>
     </header>
 
-    <!-- INFO CARD -->
-    <div class="info-card">
-        <div class="info-icon">🎁</div>
+    <div class="banner">
+        <div class="banner-icon">🎁</div>
         <div>
-            <strong>Claim Daily Bonus</strong>
+            <h3>Claim Daily Bonus</h3>
             <p>Check in for 7 consecutive days to earn big rewards!</p>
         </div>
     </div>
 
-    <!-- DAYS GRID -->
     {% set rewards = [50, 100, 150, 200, 250, 300, 500] %}
+
     <div class="days-grid">
-
-        {% for reward in rewards[:6] %}
+        {% for i in range(1, 7) %}
+        {% set reward = rewards[i - 1] %}
         <div class="day-card
-            {% if loop.index < day %}done
-            {% elif loop.index == day and not claimed_today %}today
-            {% elif loop.index == day and claimed_today %}done
+            {% if i < day %}done
+            {% elif i == day and not claimed_today %}today
             {% else %}locked{% endif %}">
-
-            <span class="day-label">Day {{ loop.index }}</span>
-            <span class="day-reward">₦{{ reward }}</span>
-
-            {% if loop.index < day or (loop.index == day and claimed_today) %}
-                <span class="day-status done-badge">✓ Done</span>
-            {% elif loop.index == day %}
-                <span class="day-status today-badge">Today</span>
+            <div class="day-label">Day {{ i }}</div>
+            <div class="day-reward">₦{{ reward }}</div>
+            {% if i < day %}
+            <span class="badge done">✓ Done</span>
+            {% elif i == day and not claimed_today %}
+            <span class="badge today">Today</span>
             {% else %}
-                <span class="day-status locked-badge">🔒 Locked</span>
+            <span class="badge locked">🔒 Locked</span>
             {% endif %}
         </div>
         {% endfor %}
-
     </div>
 
-    <!-- DAY 7 MEGA BONUS -->
-    <div class="mega-card
-        {% if day > 7 or (day == 7 and claimed_today) %}done
-        {% elif day == 7 %}today
+    <div class="day7-card
+        {% if 7 < day %}done
+        {% elif day == 7 and not claimed_today %}today
         {% else %}locked{% endif %}">
-        <div class="mega-left">
+        <div>
             <strong>Day 7 (Mega Bonus)</strong>
-            <small>Complete week reward</small>
+            <p>Complete week reward</p>
         </div>
-        <div class="mega-right">
-            <span class="mega-amount">₦500</span>
-            {% if day > 7 or (day == 7 and claimed_today) %}
-                <span class="day-status done-badge">✓</span>
-            {% elif day == 7 %}
-                <span class="day-status today-badge">Today</span>
+        <div class="day7-right">
+            <span class="day-reward">₦500</span>
+            {% if 7 < day %}
+            <span class="badge done">✓</span>
+            {% elif day == 7 and not claimed_today %}
+            <span class="badge today">Today</span>
             {% else %}
-                <span class="locked-icon">🔒</span>
+            <span>🔒</span>
             {% endif %}
         </div>
     </div>
 
-    <!-- CLAIM BUTTON -->
     {% if claimed_today %}
     <button class="claim-btn disabled" disabled>
         ✓ Already Claimed Today
@@ -87,12 +79,6 @@
     {% endif %}
 
 </div>
-<script>
-history.pushState(null, "", location.href);
-window.onpopstate = function () {
-    window.location.href = "/dashboard";
-};
-</script>
 
 </body>
 </html>
