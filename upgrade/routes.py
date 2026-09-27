@@ -6,7 +6,10 @@ from contract.models import (
     create_contract,
 )
 
-from dailycheck.models import get_balance, update_balance
+from dailycheck.models import (
+    get_balance,
+    update_balance,
+)
 
 
 def upgrade_page():
@@ -14,6 +17,7 @@ def upgrade_page():
         return redirect("/login")
 
     plans = get_contract_plans()
+
     return render_template(
         "upgrade/index.html",
         plans=plans,
@@ -28,14 +32,16 @@ def upgrade_buy_page():
     user_id = session["user"]["id"]
     plan_id = request.args.get("id")
 
+    plans = []
+
     if plan_id:
         plan = get_plan(plan_id)
-        plans = [dict(plan)] if plan else []
-    else:
-        plans = []
+        if plan:
+            plans = [dict(plan)]
 
     if not plans:
-        plans = [dict(p) for p in get_contract_plans()]
+        rows = get_contract_plans() or []
+        plans = [dict(r) for r in rows]
 
     balance = get_balance(user_id) or 0
 
@@ -49,4 +55,36 @@ def upgrade_buy_page():
 def check_upgrade():
     if "user" not in session:
         return redirect("/login")
+    return redirect("/upgrade")
+
+
+def buy_contract():
+    if "user" not in session:
+        return redirect("/login")
+
+    plan_id = request.args.get("id")
+    quantity = int(request.args.get("quantity", 1) or 1)
+
+    if quantity < 1:
+        quantity = 1
+    if quantity > 10:
+        quantity = 10
+
+    if not plan_id:
+        return redirect("/upgrade")
+
+    plan = get_plan(plan_id)
+    if not plan:
+        return redirect("/upgrade")
+
+    user_id = session["user"]["id"]
+    balance = get_balance(user_id) or 0
+    total = float(plan["price"]) * quantity
+
+    if balance < total:
+        return redirect("/upgrade/buy?id=" + str(plan_id))
+
+    update_balance(user_id, balance - total)
+    create_contract(user_id, plan, quantity)
+
     return redirect("/upgrade")
