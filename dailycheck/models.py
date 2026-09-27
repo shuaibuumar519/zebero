@@ -1,128 +1,146 @@
 from database import get_conn
-from datetime import date, datetime
+from datetime import date
 
-def connect():
-    return get_conn()
 
-REWARDS = {
-    1: 50,
-    2: 100,
-    3: 150,
-    4: 200,
-    5: 250,
-    6: 300,
-    7: 500,
-}
+REWARDS = [50, 100, 150, 200, 250, 300, 500]  # Day 1 .. Day 7
+
+
+def get_balance(user_id):
+    conn = get_conn()
+    row = conn.execute(
+        """
+        SELECT COALESCE(balance, 0) AS balance
+        FROM users
+        WHERE id = ?
+        """,
+        (user_id,),
+    ).fetchone()
+    conn.close()
+    if not row:
+        return 0
+    try:
+        return float(row["balance"])
+    except Exception:
+        return float(row[0] or 0)
+
+
+def update_balance(user_id, new_balance):
+    conn = get_conn()
+    conn.execute(
+        """
+        UPDATE users
+        SET balance = ?
+        WHERE id = ?
+        """,
+        (new_balance, user_id),
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_daily_data(user_id):
-    conn = connect()
-
+    conn = get_conn()
     user = conn.execute(
         """
-        SELECT
-            balance,
-            daily_day,
-            last_daily_claim
+        SELECT *
         FROM users
-        WHERE id=?
+        WHERE id = ?
         """,
         (user_id,),
     ).fetchone()
-
     conn.close()
 
-    return user
+    if not user:
+        return {
+            "daily_day": 1,
+            "last_daily_claim": None,
+        }
 
+    try:
+        day = user["daily_day"]
+    except Exception:
+        day = 1
 
-def claim_daily(user_id):
-
-    conn = connect()
-
-    user = conn.execute(
-        """
-        SELECT
-            balance,
-            daily_day,
-            last_daily_claim
-        FROM users
-        WHERE id=?
-        """,
-        (user_id,),
-    ).fetchone()
-
-    today = str(date.today())
-
-    if user["last_daily_claim"] == today:
-        conn.close()
-        return False
-
-    day = user["daily_day"] + 1
-
+    if day is None or day < 1:
+        day = 1
     if day > 7:
         day = 1
 
-    reward = REWARDS[day]
+    try:
+        last = user["last_daily_claim"]
+    except Exception:
+        last = None
 
-    balance = user["balance"] + reward
+    return {
+        "daily_day": day,
+        "last_daily_claim": last,
+    }
 
-    conn.execute(
-        """
-        UPDATE users
-        SET
-            balance=?,
-            daily_day=?,
-            last_daily_claim=?
-        WHERE id=?
-        """,
-        (
-            balance,
-            day,
-            today,
-            user_id,
-        ),
-    )
 
-    conn.commit()
-    conn.close()
-
-    return True
-def get_balance(user_id):
-
-    conn = connect()
+def claim_daily(user_id):
+    conn = get_conn()
+    today = str(date.today())
 
     user = conn.execute(
         """
-        SELECT balance
+        SELECT *
         FROM users
-        WHERE id=?
+        WHERE id = ?
         """,
         (user_id,),
     ).fetchone()
 
-    conn.close()
+    if not user:
+        conn.close()
+        return False
 
-    if user:
-        return user["balance"]
+    try:
+        last = user["last_daily_claim"]
+    except Exception:
+        last = None
 
-    return 0
+    try:
+        day = user["daily_day"]
+    except Exception:
+        day = 1
 
+    if day is None or day < 1:
+        day = 1
+    if day > 7:
+        day = 1
 
-def update_balance(user_id, balance):
+    # an riga an claim yau
+    if last == today:
+        conn.close()
+        return False
 
-    conn = connect()
+    # reward na Day 1 = REWARDS[0], Day 2 = REWARDS[1], ...
+    reward = REWARDS[day - 1]
 
     conn.execute(
         """
         UPDATE users
-        SET balance=?
-        WHERE id=?
+        SET balance = COALESCE(balance, 0) + ?
+        WHERE id = ?
         """,
-        (
-            balance,
-            user_id,
-        ),
+        (reward, user_id),
+    )
+
+    # gobe: kara rana (bayan an biya ranar yanzu)
+    next_day = day + 1
+    if next_day > 7:
+        next_day = 1
+
+    conn.execute(
+        """
+        UPDATE users
+        SET last_daily_claim = ?,
+            daily_day = ?
+        WHERE id = ?
+        """,
+        (today, next_day, user_id),
     )
 
     conn.commit()
     conn.close()
+    return True
