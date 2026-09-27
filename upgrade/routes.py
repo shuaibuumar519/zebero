@@ -77,23 +77,14 @@ def upgrade_buy_page():
         return redirect("/login")
 
     user_id = session["user"]["id"]
-    _ensure_contract_plans()
 
-    conn = get_conn()
-    rows = conn.execute(
-        "SELECT * FROM contract_plans ORDER BY price ASC"
-    ).fetchall()
-    conn.close()
-
-    plans = []
-    for r in rows:
-        plans.append({
-            "id": r["id"],
-            "name": r["name"],
-            "price": float(r["price"] or 0),
-            "daily_profit": float(r["daily_profit"] or 0),
-            "duration_days": int(r["duration_days"] or 30),
-        })
+    # ALWAYS show these plans
+    plans = [
+        {"id": 1, "name": "Basic", "price": 1000, "daily_profit": 150, "duration_days": 30},
+        {"id": 2, "name": "Silver", "price": 5000, "daily_profit": 800, "duration_days": 30},
+        {"id": 3, "name": "Gold", "price": 10000, "daily_profit": 1700, "duration_days": 30},
+        {"id": 4, "name": "Diamond", "price": 50000, "daily_profit": 9000, "duration_days": 30},
+    ]
 
     try:
         balance = get_balance(user_id) or 0
