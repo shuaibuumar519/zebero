@@ -14,7 +14,6 @@ def upgrade_page():
         return redirect("/login")
 
     plans = get_contract_plans()
-
     return render_template(
         "upgrade/index.html",
         plans=plans,
@@ -31,15 +30,11 @@ def upgrade_buy_page():
 
     if plan_id:
         plan = get_plan(plan_id)
-        plans = [dict(plan)] if plan else get_contract_plans()
-        plans = [dict(p) for p in plans] if plan_id and not plan else (
-            [dict(plan)] if plan else []
-        )
-        if plan:
-            plans = [dict(plan)]
-        else:
-            plans = [dict(p) for p in get_contract_plans()]
+        plans = [dict(plan)] if plan else []
     else:
+        plans = []
+
+    if not plans:
         plans = [dict(p) for p in get_contract_plans()]
 
     balance = get_balance(user_id) or 0
@@ -49,3 +44,9 @@ def upgrade_buy_page():
         plans=plans,
         balance=balance,
     )
+
+
+def check_upgrade():
+    if "user" not in session:
+        return redirect("/login")
+    return redirect("/upgrade")
