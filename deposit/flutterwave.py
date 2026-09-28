@@ -33,7 +33,6 @@ def create_virtual_account(
 ):
     """
     Create a Flutterwave NGN dynamic virtual account.
-    The secret key is read only from the server environment.
     """
 
     if not email:
@@ -107,6 +106,57 @@ def create_virtual_account(
     }
 
 
+def create_bank_transfer(tx_ref, amount, email, name=None):
+    """
+    Compatibility wrapper used by deposit/routes.py.
+    Creates a virtual account and returns data in the shape routes.py expects.
+    """
+
+    firstname = None
+    lastname = None
+
+    if name:
+        parts = str(name).strip().split(None, 1)
+        firstname = parts[0] if parts else None
+        lastname = parts[1] if len(parts) > 1 else None
+
+    try:
+        result = create_virtual_account(
+            email=email,
+            amount=amount,
+            tx_ref=tx_ref,
+            firstname=firstname,
+            lastname=lastname,
+            expires=600,  # 10 minutes
+        )
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+        }
+
+    # Normalize response to match what routes.py expects
+    return {
+        "status": "success",
+        "message": result.get("message"),
+        "data": {
+            "account_number": result.get("account_number"),
+            "bank_name": result.get("bank_name"),
+            "account_name": name or "ZEBERO",
+            "flw_ref": result.get("flw_ref"),
+            "order_ref": result.get("order_ref"),
+            "amount": result.get("amount"),
+            "tx_ref": result.get("tx_ref"),
+        },
+        "meta": {
+            "transfer_account": result.get("account_number"),
+            "transfer_bank": result.get("bank_name"),
+            "transfer_reference": result.get("flw_ref") or result.get("order_ref"),
+            "account_name": name or "ZEBERO",
+        },
+    }
+
+
 def verify_transaction(transaction_id):
     """
     Verify a Flutterwave transaction before crediting the user.
@@ -145,7 +195,6 @@ def verify_transaction(transaction_id):
 def verify_by_reference(tx_ref):
     """
     Find a transaction by tx_ref and return it.
-    This is useful when the application knows its own transaction reference.
     """
 
     if not tx_ref:
