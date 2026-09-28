@@ -85,7 +85,7 @@ from referral.routes import referral_page
 # ==========================================
 
 from upgrade.models import get_upgrade_levels
-from upgrade.routes import upgrade_page, check_upgrade
+from upgrade.routes import upgrade_page, upgrade_buy_page
 
 
 # ==========================================
@@ -213,7 +213,10 @@ def login():
     if ref:
         session["referral_code"] = ref.strip().upper()
 
-    return redirect(get_google_login_url())
+    if "user" in session:
+        return redirect(url_for("dashboard"))
+
+    return render_template("login.html")
 
 
 @app.route("/auth/google")

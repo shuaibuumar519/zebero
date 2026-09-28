@@ -26,7 +26,7 @@ def referral_page():
 
     referral_link = (
         request.host_url.rstrip("/")
-        + "/login?ref="
+        + "/?ref="
         + code
     )
 
