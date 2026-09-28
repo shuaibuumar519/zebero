@@ -1,308 +1,183 @@
 import os
 import requests
 
-from dotenv import load_dotenv
+
+FLUTTERWAVE_BASE_URL = "https://api.flutterwave.com/v3"
 
 
-load_dotenv()
+def _get_secret_key():
+    secret_key = os.getenv("FLW_SECRET_KEY")
+
+    if not secret_key:
+        raise RuntimeError("FLW_SECRET_KEY is not configured")
+
+    return secret_key
 
 
-FLW_SECRET_KEY = os.getenv(
-    "FLW_SECRET_KEY",
-    "",
-).strip()
-
-BASE_URL = os.getenv(
-    "FLW_BASE_URL",
-    "https://api.flutterwave.com/v3",
-).rstrip("/")
-
-
-# =========================================================
-# HEADERS
-# =========================================================
-
-def headers():
+def _headers():
     return {
-        "Authorization": f"Bearer {FLW_SECRET_KEY}",
+        "Authorization": f"Bearer {_get_secret_key()}",
         "Content-Type": "application/json",
         "Accept": "application/json",
     }
 
 
-# =========================================================
-# ERROR
-# =========================================================
-
-def _error(message, response=None):
-
-    result = {
-        "status": "error",
-        "message": message,
-    }
-
-    if response is not None:
-
-        result["http_status"] = response.status_code
-
-        try:
-            result["response"] = response.json()
-        except Exception:
-            result["response"] = response.text
-
-    return result
-
-
-# =========================================================
-# CREATE BANK TRANSFER
-# =========================================================
-
-def create_bank_transfer(
-    tx_ref,
-    amount,
+def create_virtual_account(
     email,
-    name,
+    amount,
+    tx_ref,
+    firstname=None,
+    lastname=None,
     phone_number=None,
+    expires=3600,
 ):
+    """
+    Create a Flutterwave NGN dynamic virtual account.
 
-    if not FLW_SECRET_KEY:
-        return _error(
-            "FLW_SECRET_KEY is missing from .env"
-        )
+    The secret key is read only from the server environment.
+    """
+
+    if not email:
+        raise ValueError("Customer email is required")
+
+    if not tx_ref:
+        raise ValueError("Transaction reference is required")
+
+    try:
+        amount = int(float(amount))
+    except (TypeError, ValueError):
+        raise ValueError("Invalid amount")
+
+    if amount <= 0:
+        raise ValueError("Amount must be greater than zero")
 
     payload = {
-        "tx_ref": tx_ref,
-        "amount": float(amount),
-        "currency": "NGN",
         "email": email,
-        "fullname": name,
-        "narration": "ZEBERO Deposit",
+        "amount": amount,
+        "currency": "NGN",
+        "tx_ref": tx_ref,
+        "is_permanent": False,
+        "expires": int(expires),
     }
+
+    if firstname:
+        payload["firstname"] = firstname
+
+    if lastname:
+        payload["lastname"] = lastname
 
     if phone_number:
-        payload["phone_number"] = phone_number
+        payload["phonenumber"] = phone_number
 
-    try:
-
-        response = requests.post(
-            f"{BASE_URL}/charges?type=bank_transfer",
-            headers=headers(),
-            json=payload,
-            timeout=30,
-        )
-
-        try:
-            return response.json()
-
-        except ValueError:
-            return _error(
-                "Flutterwave returned invalid JSON.",
-                response,
-            )
-
-    except requests.RequestException as e:
-
-        return _error(str(e))
-
-
-# =========================================================
-# VERIFY BY TRANSACTION ID
-# =========================================================
-
-def verify_payment(transaction_id):
-
-    if not FLW_SECRET_KEY:
-        return _error(
-            "FLW_SECRET_KEY is missing from .env"
-        )
-
-    try:
-
-        response = requests.get(
-            f"{BASE_URL}/transactions/{transaction_id}/verify",
-            headers=headers(),
-            timeout=30,
-        )
-
-        try:
-            return response.json()
-
-        except ValueError:
-            return _error(
-                "Flutterwave returned invalid JSON.",
-                response,
-            )
-
-    except requests.RequestException as e:
-
-        return _error(str(e))
-
-
-# =========================================================
-# VERIFY BY TX_REF
-# =========================================================
-
-def verify_by_reference(tx_ref):
-
-    if not FLW_SECRET_KEY:
-        return _error(
-            "FLW_SECRET_KEY is missing from .env"
-        )
-
-    try:
-
-        response = requests.get(
-            f"{BASE_URL}/transactions/verify_by_reference",
-            headers=headers(),
-            params={
-                "tx_ref": tx_ref,
-            },
-            timeout=30,
-        )
-
-        try:
-            result = response.json()
-
-        except ValueError:
-            return _error(
-                "Flutterwave returned invalid JSON.",
-                response,
-            )
-
-        return result
-
-    except requests.RequestException as e:
-
-        return _error(str(e))
-
-
-# =========================================================
-# VERIFY CHARGE
-# =========================================================
-
-def verify_charge(transaction_id):
-
-    return verify_payment(
-        transaction_id
+    response = requests.post(
+        f"{FLUTTERWAVE_BASE_URL}/virtual-account-numbers",
+        headers=_headers(),
+        json=payload,
+        timeout=30,
     )
 
-
-# =========================================================
-# GET BANKS
-# =========================================================
-
-def get_banks():
-
-    if not FLW_SECRET_KEY:
-        return _error(
-            "FLW_SECRET_KEY is missing from .env"
-        )
-
     try:
-
-        response = requests.get(
-            f"{BASE_URL}/banks/NG",
-            headers=headers(),
-            timeout=30,
+        data = response.json()
+    except ValueError:
+        raise RuntimeError(
+            f"Flutterwave returned invalid JSON (HTTP {response.status_code})"
         )
 
-        try:
-            return response.json()
+    if response.status_code >= 400:
+        message = data.get("message", "Flutterwave request failed")
+        raise RuntimeError(message)
 
-        except ValueError:
-            return _error(
-                "Flutterwave returned invalid JSON.",
-                response,
-            )
-
-    except requests.RequestException as e:
-
-        return _error(str(e))
-
-
-# =========================================================
-# TRANSFER FEE
-# =========================================================
-
-def transfer_fee(amount):
-
-    if not FLW_SECRET_KEY:
-        return _error(
-            "FLW_SECRET_KEY is missing from .env"
+    if data.get("status") != "success":
+        raise RuntimeError(
+            data.get("message", "Unable to create virtual account")
         )
 
-    try:
+    account = data.get("data") or {}
 
-        response = requests.get(
-            f"{BASE_URL}/transactions/fee",
-            headers=headers(),
-            params={
-                "amount": float(amount),
-                "currency": "NGN",
-                "payment_type": "bank_transfer",
-            },
-            timeout=30,
-        )
-
-        try:
-            return response.json()
-
-        except ValueError:
-            return _error(
-                "Flutterwave returned invalid JSON.",
-                response,
-            )
-
-    except requests.RequestException as e:
-
-        return _error(str(e))
-
-
-# =========================================================
-# CREATE TRANSFER
-# =========================================================
-
-def create_transfer(
-    account_bank,
-    account_number,
-    amount,
-    narration,
-    reference,
-):
-
-    if not FLW_SECRET_KEY:
-        return _error(
-            "FLW_SECRET_KEY is missing from .env"
-        )
-
-    payload = {
-        "account_bank": account_bank,
-        "account_number": account_number,
-        "amount": float(amount),
-        "currency": "NGN",
-        "reference": reference,
-        "narration": narration,
-        "debit_currency": "NGN",
+    return {
+        "status": "success",
+        "message": data.get("message"),
+        "account_number": account.get("account_number"),
+        "bank_name": account.get("bank_name"),
+        "amount": account.get("amount", amount),
+        "tx_ref": account.get("tx_ref", tx_ref),
+        "flw_ref": account.get("flw_ref"),
+        "order_ref": account.get("order_ref"),
+        "expiry_date": account.get("expiry_date"),
+        "raw": data,
     }
 
-    try:
 
-        response = requests.post(
-            f"{BASE_URL}/transfers",
-            headers=headers(),
-            json=payload,
-            timeout=30,
+def verify_transaction(transaction_id):
+    """
+    Verify a Flutterwave transaction before crediting the user.
+    """
+
+    if not transaction_id:
+        raise ValueError("Transaction ID is required")
+
+    response = requests.get(
+        f"{FLUTTERWAVE_BASE_URL}/transactions/{transaction_id}/verify",
+        headers=_headers(),
+        timeout=30,
+    )
+
+    try:
+        data = response.json()
+    except ValueError:
+        raise RuntimeError(
+            f"Flutterwave returned invalid JSON (HTTP {response.status_code})"
         )
 
-        try:
-            return response.json()
+    if response.status_code >= 400:
+        raise RuntimeError(
+            data.get("message", "Transaction verification failed")
+        )
 
-        except ValueError:
-            return _error(
-                "Flutterwave returned invalid JSON.",
-                response,
-            )
+    if data.get("status") != "success":
+        raise RuntimeError(
+            data.get("message", "Transaction verification failed")
+        )
 
-    except requests.RequestException as e:
+    return data.get("data") or {}
 
-        return _error(str(e))
+
+def verify_by_reference(tx_ref):
+    """
+    Find a transaction by tx_ref and return it.
+
+    This is useful when the application knows its own
+    transaction reference.
+    """
+
+    if not tx_ref:
+        raise ValueError("Transaction reference is required")
+
+    response = requests.get(
+        f"{FLUTTERWAVE_BASE_URL}/transactions",
+        headers=_headers(),
+        params={
+            "tx_ref": tx_ref,
+            "currency": "NGN",
+        },
+        timeout=30,
+    )
+
+    try:
+        data = response.json()
+    except ValueError:
+        raise RuntimeError(
+            f"Flutterwave returned invalid JSON (HTTP {response.status_code})"
+        )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            data.get("message", "Unable to query Flutterwave")
+        )
+
+    transactions = data.get("data") or []
+
+    if not transactions:
+        return None
+
+    return transactions[0]
