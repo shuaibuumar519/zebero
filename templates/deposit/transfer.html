@@ -2,14 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bank Transfer - ZEBERO</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/deposit.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/deposit.css') }}">
 
     <style>
         .transfer-card {
@@ -20,24 +15,9 @@
             padding: 28px 22px;
             box-shadow: 0 10px 35px rgba(0,0,0,.07);
         }
-
-        .transfer-title {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        .transfer-title h1 {
-            font-size: 25px;
-            color: #172033;
-            margin-bottom: 8px;
-        }
-
-        .transfer-title p {
-            color: #687386;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-
+        .transfer-title { text-align: center; margin-bottom: 24px; }
+        .transfer-title h1 { font-size: 25px; color: #172033; margin-bottom: 8px; }
+        .transfer-title p { color: #687386; font-size: 14px; line-height: 1.5; }
         .amount-box {
             background: #f1faf6;
             border-radius: 16px;
@@ -45,59 +25,40 @@
             text-align: center;
             margin-bottom: 20px;
         }
-
-        .amount-box small {
-            display: block;
-            color: #687386;
-            margin-bottom: 5px;
-        }
-
-        .amount-box strong {
-            font-size: 28px;
-            color: #008f5a;
-        }
-
+        .amount-box small { display: block; color: #687386; margin-bottom: 5px; }
+        .amount-box strong { font-size: 28px; color: #008f5a; }
         .bank-box {
             border: 1px solid #e0e5ec;
             border-radius: 16px;
             overflow: hidden;
             margin-bottom: 18px;
         }
-
         .bank-row {
             padding: 16px;
             border-bottom: 1px solid #edf0f4;
         }
-
-        .bank-row:last-child {
-            border-bottom: none;
-        }
-
+        .bank-row:last-child { border-bottom: none; }
         .bank-label {
             display: block;
             font-size: 12px;
             color: #7a8495;
             margin-bottom: 5px;
         }
-
         .bank-value {
             font-size: 17px;
             font-weight: 700;
             color: #172033;
         }
-
         .account-row {
             display: flex;
             gap: 10px;
             align-items: center;
         }
-
         .account-number {
             flex: 1;
             font-size: 20px;
             letter-spacing: 1px;
         }
-
         .copy-button {
             border: none;
             background: #008f5a;
@@ -107,7 +68,6 @@
             font-weight: 700;
             cursor: pointer;
         }
-
         .transfer-note {
             background: #fff8e8;
             color: #765d20;
@@ -117,7 +77,6 @@
             line-height: 1.5;
             margin-bottom: 18px;
         }
-
         .timer {
             text-align: center;
             background: #f5f7fb;
@@ -127,14 +86,12 @@
             font-weight: 700;
             margin-bottom: 18px;
         }
-
         .status {
             text-align: center;
             color: #687386;
             font-size: 13px;
             margin-bottom: 18px;
         }
-
         .success-message,
         .expired-message {
             display: none;
@@ -143,17 +100,14 @@
             border-radius: 14px;
             font-weight: 700;
         }
-
         .success-message {
             background: #e8f8f1;
             color: #008f5a;
         }
-
         .expired-message {
             background: #fff0f0;
             color: #c0392b;
         }
-
         .back-dashboard {
             display: block;
             text-align: center;
@@ -164,18 +118,13 @@
         }
     </style>
 </head>
-
 <body>
-
 <main class="deposit-page">
-
     <div class="transfer-card">
 
         <div class="transfer-title">
             <h1>Bank Transfer</h1>
-            <p>
-                Transfer the exact amount below to the account provided.
-            </p>
+            <p>Transfer the exact amount below to the account provided.</p>
         </div>
 
         <div class="amount-box">
@@ -184,35 +133,22 @@
         </div>
 
         <div class="bank-box">
-
             <div class="bank-row">
                 <span class="bank-label">Bank</span>
-                <span class="bank-value">
-                    {{ bank_name }}
-                </span>
+                <span class="bank-value">{{ bank_name }}</span>
             </div>
 
             <div class="bank-row">
                 <span class="bank-label">Account Number</span>
-
                 <div class="account-row">
-                    <span
-                        id="accountNumber"
-                        class="bank-value account-number"
-                    >
+                    <span id="accountNumber" class="bank-value account-number">
                         {{ account_number }}
                     </span>
-
-                    <button
-                        type="button"
-                        class="copy-button"
-                        onclick="copyAccount()"
-                    >
+                    <button type="button" class="copy-button" onclick="copyAccount()">
                         Copy
                     </button>
                 </div>
             </div>
-
         </div>
 
         <div class="transfer-note">
@@ -220,247 +156,118 @@
             {{ transfer_note }}
         </div>
 
-        <div
-            id="timeRemaining"
-            class="timer"
-        >
+        <div id="timeRemaining" class="timer">
             Checking time...
         </div>
 
-        <div
-            id="paymentStatus"
-            class="status"
-        >
+        <div id="paymentStatus" class="status">
             Waiting for your payment...
         </div>
 
-        <div
-            id="successMessage"
-            class="success-message"
-        >
+        <div id="successMessage" class="success-message">
             ✓ Payment successful! Redirecting to dashboard...
         </div>
 
-        <div
-            id="expiredMessage"
-            class="expired-message"
-        >
+        <div id="expiredMessage" class="expired-message">
             Payment time has expired.
         </div>
 
-        <a
-            href="{{ url_for('dashboard') }}"
-            class="back-dashboard"
-        >
+        <a href="{{ url_for('dashboard') }}" class="back-dashboard">
             ← Back to Dashboard
         </a>
 
     </div>
-
 </main>
 
-
 <script>
-
 const txRef = {{ tx_ref|tojson }};
+const expiresAt = {{ expires_at }};   // already in milliseconds from Python
 
-const expiresAt = new Date(
-    {{ expires_at|tojson }}
-).getTime();
-
-
-const timeElement =
-    document.getElementById("timeRemaining");
-
-const successMessage =
-    document.getElementById("successMessage");
-
-const expiredMessage =
-    document.getElementById("expiredMessage");
-
-const paymentStatus =
-    document.getElementById("paymentStatus");
-
+const timeElement = document.getElementById("timeRemaining");
+const successMessage = document.getElementById("successMessage");
+const expiredMessage = document.getElementById("expiredMessage");
+const paymentStatus = document.getElementById("paymentStatus");
 
 function copyAccount() {
+    const account = document.getElementById("accountNumber").innerText.trim();
 
-    const account =
-        document
-            .getElementById("accountNumber")
-            .innerText
-            .trim();
-
-    if (
-        navigator.clipboard &&
-        navigator.clipboard.writeText
-    ) {
-
-        navigator.clipboard
-            .writeText(account)
-            .then(function () {
-                alert("Account number copied.");
-            })
-            .catch(function () {
-                alert("Unable to copy account number.");
-            });
-
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(account)
+            .then(() => alert("Account number copied."))
+            .catch(() => alert("Unable to copy account number."));
     } else {
-
         alert("Copy is not supported on this browser.");
-
     }
 }
 
-
 function updateCountdown() {
-
-    const now =
-        new Date().getTime();
-
-    const difference =
-        expiresAt - now;
+    const now = Date.now();
+    const difference = expiresAt - now;
 
     if (difference <= 0) {
-
-        timeElement.innerText =
-            "Time expired";
-
+        timeElement.innerText = "Time expired";
         checkPaymentStatus();
-
         return;
     }
 
-    const minutes =
-        Math.floor(
-            difference / 60000
-        );
-
-    const seconds =
-        Math.floor(
-            (difference % 60000) / 1000
-        );
+    const minutes = Math.floor(difference / 60000);
+    const seconds = Math.floor((difference % 60000) / 1000);
 
     timeElement.innerText =
-        "Time remaining: "
-        + String(minutes).padStart(2, "0")
-        + ":"
-        + String(seconds).padStart(2, "0");
+        "Time remaining: " +
+        String(minutes).padStart(2, "0") +
+        ":" +
+        String(seconds).padStart(2, "0");
 }
 
-
 updateCountdown();
-
-setInterval(
-    updateCountdown,
-    1000
-);
-
+setInterval(updateCountdown, 1000);
 
 let checking = false;
 
-
 async function checkPaymentStatus() {
-
-    if (checking) {
-        return;
-    }
-
+    if (checking) return;
     checking = true;
 
     try {
-
-        const response =
-            await fetch(
-                "/deposit/status/"
-                + encodeURIComponent(txRef),
-                {
-                    method: "GET",
-                    cache: "no-store",
-                    headers: {
-                        "Accept": "application/json"
-                    }
-                }
-            );
-
-        const data =
-            await response.json();
-
-        console.log(
-            "DEPOSIT STATUS:",
-            data
+        const response = await fetch(
+            "/deposit/status/" + encodeURIComponent(txRef),
+            {
+                method: "GET",
+                cache: "no-store",
+                headers: { "Accept": "application/json" }
+            }
         );
 
+        const data = await response.json();
+        console.log("DEPOSIT STATUS:", data);
 
-        if (
-            data.status ===
-            "successful"
-        ) {
+        if (data.status === "successful") {
+            paymentStatus.style.display = "none";
+            timeElement.style.display = "none";
+            successMessage.style.display = "block";
 
-            paymentStatus.style.display =
-                "none";
-
-            timeElement.style.display =
-                "none";
-
-            successMessage.style.display =
-                "block";
-
-            setTimeout(
-                function () {
-
-                    window.location.href =
-                        "{{ url_for('dashboard') }}";
-
-                },
-                1500
-            );
-
+            setTimeout(() => {
+                window.location.href = "{{ url_for('dashboard') }}";
+            }, 1500);
             return;
         }
 
-
-        if (
-            data.status ===
-            "expired"
-        ) {
-
-            paymentStatus.style.display =
-                "none";
-
-            timeElement.style.display =
-                "none";
-
-            expiredMessage.style.display =
-                "block";
-
+        if (data.status === "expired") {
+            paymentStatus.style.display = "none";
+            timeElement.style.display = "none";
+            expiredMessage.style.display = "block";
             return;
         }
-
-    }
-    catch (error) {
-
-        console.log(
-            "Payment status error:",
-            error
-        );
-
-    }
-    finally {
-
+    } catch (error) {
+        console.log("Payment status error:", error);
+    } finally {
         checking = false;
-
     }
 }
 
-
 checkPaymentStatus();
-
-setInterval(
-    checkPaymentStatus,
-    5000
-);
-
+setInterval(checkPaymentStatus, 5000);
 </script>
-
 </body>
 </html>

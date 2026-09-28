@@ -112,6 +112,12 @@ def deposit_create():
         flw_ref=str(flw_ref) if flw_ref else None,
     )
 
+    transfer_note = (
+        "Transfer the exact amount shown. Do not transfer more or less. "
+        "Payment will be confirmed automatically within a few minutes. "
+        "This account number is valid for 10 minutes only."
+    )
+
     return render_template(
         "deposit/transfer.html",
         amount=amount,
@@ -119,7 +125,8 @@ def deposit_create():
         bank_name=bank_name,
         account_name=account_name,
         tx_ref=tx_ref,
-        expires_at=expires_str,
+        expires_at=int(expires_at.timestamp() * 1000),  # Unix ms (timezone safe)
+        transfer_note=transfer_note,
         user=user,
     )
 
