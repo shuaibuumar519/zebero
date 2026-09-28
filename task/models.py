@@ -1,4 +1,5 @@
 from database import get_conn
+from datetime import date
 
 def connect():
     return get_conn()
