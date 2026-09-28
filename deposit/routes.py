@@ -18,7 +18,7 @@ from deposit.models import (
     complete_deposit,
 )
 
-from deposit.flutterwave import create_virtual_account
+from deposit.flutterwave import create_bank_transfer
 
 deposit_bp = Blueprint("deposit", __name__)
 
@@ -30,7 +30,10 @@ def deposit_page():
     if "user" not in session:
         return redirect(url_for("index"))
 
-    return render_template("deposit/index.html", user=session.get("user"))
+    return render_template(
+        "deposit/index.html",
+        user=session.get("user"),
+    )
 
 
 @deposit_bp.route("/deposit/create", methods=["POST"])
@@ -41,30 +44,31 @@ def deposit_create():
     user = session["user"]
     user_id = user["id"]
 
+    amount_raw = request.form.get("amount")
+    if amount_raw is None and request.is_json:
+        amount_raw = (request.get_json(silent=True) or {}).get("amount")
+
     try:
-        amount = float(request.form.get("amount") or request.json.get("amount") or 0)
+        amount = float(amount_raw or 0)
     except Exception:
         amount = 0
 
     if amount < 1000:
         return redirect(url_for("deposit.deposit_page"))
 
-    # local deposit record
     dep = create_deposit(user_id, amount)
     tx_ref = dep["tx_ref"]
 
-    # expiry as datetime, then string once
     expires_at = datetime.now() + timedelta(minutes=10)
     expires_str = expires_at.isoformat()
 
     email = user.get("email") or "user@zebero.com.ng"
     name = user.get("username") or "ZEBERO User"
 
-    # Flutterwave virtual account
-    flw = create_virtual_account(
+    flw = create_bank_transfer(
+        tx_ref=tx_ref,
         amount=amount,
         email=email,
-        tx_ref=tx_ref,
         name=name,
     )
 
@@ -73,29 +77,39 @@ def deposit_create():
     if not flw or flw.get("status") != "success":
         return render_template(
             "deposit/failed.html",
-            message="Could not create virtual account. Try again.",
+            message=(flw or {}).get("message") or "Could not create bank transfer.",
         )
 
-    data = flw.get("meta") or flw.get("data") or {}
+    meta = flw.get("meta") or {}
+    data = flw.get("data") or {}
+
     account_number = (
-        data.get("transfer_account")
+        meta.get("transfer_account")
         or data.get("account_number")
         or ""
     )
     bank_name = (
-        data.get("transfer_bank")
+        meta.get("transfer_bank")
         or data.get("bank_name")
         or "Flutterwave"
     )
-    account_name = data.get("account_name") or "ZEBERO"
-    flw_ref = data.get("transfer_reference") or data.get("flw_ref")
+    account_name = (
+        data.get("account_name")
+        or meta.get("account_name")
+        or "ZEBERO"
+    )
+    flw_ref = (
+        meta.get("transfer_reference")
+        or data.get("flw_ref")
+        or data.get("id")
+    )
 
     save_virtual_account(
         tx_ref=tx_ref,
-        account_number=account_number,
-        bank_name=bank_name,
-        account_name=account_name,
-        flw_ref=flw_ref,
+        account_number=str(account_number),
+        bank_name=str(bank_name),
+        account_name=str(account_name),
+        flw_ref=str(flw_ref) if flw_ref else None,
     )
 
     return render_template(
