@@ -436,6 +436,7 @@ def init_db():
                 task_id INTEGER NOT NULL,
                 status TEXT DEFAULT 'pending',
                 proof TEXT,
+                screenshot TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -447,9 +448,19 @@ def init_db():
                 task_id INTEGER NOT NULL,
                 status TEXT DEFAULT 'pending',
                 proof TEXT,
+                screenshot TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+
+    try:
+        if is_pg:
+            cur.execute("ALTER TABLE task_verifications ADD COLUMN IF NOT EXISTS screenshot TEXT")
+        else:
+            cur.execute("ALTER TABLE task_verifications ADD COLUMN screenshot TEXT")
+    except Exception:
+        pass
 
     # SEED contract_plans
     cur.execute("DELETE FROM contract_plans")
