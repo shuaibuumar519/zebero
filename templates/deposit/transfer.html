@@ -139,6 +139,11 @@
             </div>
 
             <div class="bank-row">
+                <span class="bank-label">Account Name</span>
+                <span class="bank-value">{{ account_name or "ZEBERO" }}</span>
+            </div>
+
+            <div class="bank-row">
                 <span class="bank-label">Account Number</span>
                 <div class="account-row">
                     <span id="accountNumber" class="bank-value account-number">
@@ -181,7 +186,7 @@
 
 <script>
 const txRef = {{ tx_ref|tojson }};
-const expiresAt = {{ expires_at }};   // already in milliseconds from Python
+const expiresAt = {{ expires_at }};
 
 const timeElement = document.getElementById("timeRemaining");
 const successMessage = document.getElementById("successMessage");

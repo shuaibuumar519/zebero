@@ -60,7 +60,6 @@ def deposit_create():
     tx_ref = dep["tx_ref"]
 
     expires_at = datetime.now() + timedelta(minutes=10)
-    expires_str = expires_at.isoformat()
 
     email = user.get("email") or "user@zebero.com.ng"
     name = user.get("username") or "ZEBERO User"
@@ -123,9 +122,9 @@ def deposit_create():
         amount=amount,
         account_number=account_number,
         bank_name=bank_name,
-        account_name=account_name,
+        account_name=account_name or "ZEBERO",
         tx_ref=tx_ref,
-        expires_at=int(expires_at.timestamp() * 1000),  # Unix ms (timezone safe)
+        expires_at=int(expires_at.timestamp() * 1000),
         transfer_note=transfer_note,
         user=user,
     )
