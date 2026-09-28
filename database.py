@@ -426,6 +426,31 @@ def init_db():
             )
         """)
 
+
+    # TASK VERIFICATIONS
+    if is_pg:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS task_verifications (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                task_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                proof TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+    else:
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS task_verifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                task_id INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                proof TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
     # SEED contract_plans
     cur.execute("DELETE FROM contract_plans")
     for name, price, daily, days in [
