@@ -116,6 +116,29 @@
             font-weight: 700;
             margin-top: 20px;
         }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #008f5a;
+            color: white;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: all 0.35s ease;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
     </style>
 </head>
 <body>
@@ -184,6 +207,9 @@
     </div>
 </main>
 
+<!-- Toast -->
+<div id="toast" class="toast">Account number copied</div>
+
 <script>
 const txRef = {{ tx_ref|tojson }};
 const expiresAt = {{ expires_at }};
@@ -193,15 +219,40 @@ const successMessage = document.getElementById("successMessage");
 const expiredMessage = document.getElementById("expiredMessage");
 const paymentStatus = document.getElementById("paymentStatus");
 
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2200);
+}
+
 function copyAccount() {
     const account = document.getElementById("accountNumber").innerText.trim();
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(account)
-            .then(() => alert("Account number copied."))
-            .catch(() => alert("Unable to copy account number."));
+            .then(() => {
+                showToast("Account number copied ✓");
+            })
+            .catch(() => {
+                showToast("Unable to copy");
+            });
     } else {
-        alert("Copy is not supported on this browser.");
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = account;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand("copy");
+            showToast("Account number copied ✓");
+        } catch (err) {
+            showToast("Unable to copy");
+        }
+        document.body.removeChild(textArea);
     }
 }
 
