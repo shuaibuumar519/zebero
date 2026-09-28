@@ -5,6 +5,31 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Referral - ZEBERO</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/referral.css') }}">
+<style>
+    /* Toast notification */
+    .toast {
+        position: fixed;
+        bottom: 90px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: #008f5a;
+        color: white;
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        opacity: 0;
+        transition: all 0.35s ease;
+        z-index: 9999;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+    .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+</style>
 </head>
 <body>
 
@@ -106,21 +131,51 @@
     </a>
 </nav>
 
+<!-- Toast -->
+<div id="toast" class="toast">Link copied!</div>
+
 <script>
-function copyLink(){
-    const input = document.getElementById("refLink");
-    input.select();
-    input.setSelectionRange(0, 99999);
-    navigator.clipboard.writeText(input.value).then(() => {
-        alert("Link copied!");
-    }).catch(() => {
-        document.execCommand("copy");
-        alert("Link copied!");
-    });
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.innerText = message;
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2200);
 }
 
-function shareLink(){
+function copyLink() {
+    const input = document.getElementById("refLink");
+    const link = input.value;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(link)
+            .then(() => {
+                showToast("Link copied ✓");
+            })
+            .catch(() => {
+                fallbackCopy(input);
+            });
+    } else {
+        fallbackCopy(input);
+    }
+}
+
+function fallbackCopy(input) {
+    input.select();
+    input.setSelectionRange(0, 99999);
+    try {
+        document.execCommand("copy");
+        showToast("Link copied ✓");
+    } catch (err) {
+        showToast("Unable to copy");
+    }
+}
+
+function shareLink() {
     const link = document.getElementById("refLink").value;
+
     if (navigator.share) {
         navigator.share({
             title: "ZEBERO Referral",
@@ -128,11 +183,18 @@ function shareLink(){
             url: link
         }).catch(() => {});
     } else {
-        navigator.clipboard.writeText(link);
-        alert("Link copied! Paste it anywhere.");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(link)
+                .then(() => showToast("Link copied ✓ Share it anywhere"))
+                .catch(() => showToast("Unable to copy"));
+        } else {
+            const input = document.getElementById("refLink");
+            fallbackCopy(input);
+        }
     }
 }
 </script>
+
 <script>
 history.pushState(null, "", location.href);
 window.onpopstate = function () {
