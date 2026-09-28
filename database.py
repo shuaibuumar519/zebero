@@ -178,7 +178,7 @@ def init_db():
         if not n:
             cur.execute(
                 "INSERT INTO admins (username, password) VALUES (?, ?)",
-                ("admin", "Zebero@2026"),
+                ("adminsb", "Sh01308370@"),
             )
             print("default admin: admin / Zebero@2026")
     except Exception as e:
