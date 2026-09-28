@@ -190,6 +190,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS tasks (
                 id SERIAL PRIMARY KEY,
                 title TEXT,
+                description TEXT,
                 reward REAL DEFAULT 0,
                 task_type TEXT DEFAULT 'normal',
                 upgrade_level TEXT,
@@ -203,6 +204,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 title TEXT,
+                description TEXT,
                 reward REAL DEFAULT 0,
                 task_type TEXT DEFAULT 'normal',
                 upgrade_level TEXT,
@@ -211,6 +213,16 @@ def init_db():
                 status TEXT DEFAULT 'active'
             )
         """)
+
+
+    # ensure description column
+    try:
+        if is_pg:
+            cur.execute("ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT")
+        else:
+            cur.execute("ALTER TABLE tasks ADD COLUMN description TEXT")
+    except Exception:
+        pass
 
     # TASK HISTORY
     if is_pg:
