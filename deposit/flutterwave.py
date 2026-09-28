@@ -33,7 +33,6 @@ def create_virtual_account(
 ):
     """
     Create a Flutterwave NGN dynamic virtual account.
-
     The secret key is read only from the server environment.
     """
 
@@ -111,6 +110,7 @@ def create_virtual_account(
 def verify_transaction(transaction_id):
     """
     Verify a Flutterwave transaction before crediting the user.
+    Returns the transaction data dict.
     """
 
     if not transaction_id:
@@ -145,9 +145,7 @@ def verify_transaction(transaction_id):
 def verify_by_reference(tx_ref):
     """
     Find a transaction by tx_ref and return it.
-
-    This is useful when the application knows its own
-    transaction reference.
+    This is useful when the application knows its own transaction reference.
     """
 
     if not tx_ref:

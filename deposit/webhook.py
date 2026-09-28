@@ -11,7 +11,7 @@ from flask import (
 from dotenv import load_dotenv
 
 from deposit.flutterwave import (
-    verify_payment,
+    verify_transaction,
     verify_by_reference,
 )
 
@@ -252,66 +252,32 @@ def flutterwave_webhook():
     verification = None
 
     if transaction_id:
-
-        print(
-            "VERIFYING USING TRANSACTION ID..."
-        )
-
-        verification = verify_payment(
-            transaction_id
-        )
+        print("VERIFYING USING TRANSACTION ID...")
+        try:
+            verification = verify_transaction(transaction_id)
+        except Exception as e:
+            print(f"TRANSACTION ID VERIFY FAILED: {e}")
+            verification = None
 
     # Fallback
-    if (
-        not isinstance(verification, dict)
-        or verification.get("status") != "success"
-    ):
-
-        print(
-            "TRANSACTION ID VERIFY FAILED."
-        )
-
-        print(
-            "TRYING VERIFY BY TX_REF..."
-        )
-
-        verification = verify_by_reference(
-            tx_ref
-        )
+    if not isinstance(verification, dict):
+        print("TRYING VERIFY BY TX_REF...")
+        try:
+            verification = verify_by_reference(tx_ref)
+        except Exception as e:
+            print(f"VERIFY BY TX_REF FAILED: {e}")
+            verification = None
 
     print("VERIFICATION:")
     print(verification)
 
-    if not isinstance(
-        verification,
-        dict
-    ):
+    if not isinstance(verification, dict):
         return jsonify({
             "success": True,
         }), 200
 
-    if verification.get("status") != "success":
-
-        print(
-            "FLUTTERWAVE VERIFICATION FAILED"
-        )
-
-        return jsonify({
-            "success": True,
-        }), 200
-
-    verified_data = verification.get(
-        "data",
-        {},
-    )
-
-    if not isinstance(
-        verified_data,
-        dict
-    ):
-        return jsonify({
-            "success": True,
-        }), 200
+    # verify_transaction and verify_by_reference return the transaction data directly
+    verified_data = verification
 
     verified_status = str(
         verified_data.get(
