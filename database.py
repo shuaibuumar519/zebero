@@ -167,6 +167,23 @@ def init_db():
             )
         """)
 
+    # DEFAULT ADMIN (idana babu)
+    try:
+        cur.execute("SELECT COUNT(*) AS c FROM admins")
+        row = cur.fetchone()
+        try:
+            n = row["c"]
+        except Exception:
+            n = row[0] if row else 0
+        if not n:
+            cur.execute(
+                "INSERT INTO admins (username, password) VALUES (?, ?)",
+                ("admin", "Zebero@2026"),
+            )
+            print("default admin: admin / Zebero@2026")
+    except Exception as e:
+        print("admin seed error:", e)
+
     # TASKS
     if is_pg:
         cur.execute("""
