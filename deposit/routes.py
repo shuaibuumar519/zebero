@@ -62,13 +62,13 @@ def deposit_create():
     expires_at = datetime.now() + timedelta(minutes=10)
 
     email = user.get("email") or "user@zebero.com.ng"
-    name = user.get("username") or "ZEBERO User"
 
+    # Always use ZEBERO as account name
     flw = create_bank_transfer(
         tx_ref=tx_ref,
         amount=amount,
         email=email,
-        name=name,
+        name="ZEBERO",
     )
 
     print("FLUTTERWAVE CREATE RESPONSE:", flw)
@@ -92,11 +92,10 @@ def deposit_create():
         or data.get("bank_name")
         or "Flutterwave"
     )
-    account_name = (
-        data.get("account_name")
-        or meta.get("account_name")
-        or "ZEBERO"
-    )
+
+    # Force ZEBERO no matter what Flutterwave returns
+    account_name = "ZEBERO"
+
     flw_ref = (
         meta.get("transfer_reference")
         or data.get("flw_ref")
@@ -107,7 +106,7 @@ def deposit_create():
         tx_ref=tx_ref,
         account_number=str(account_number),
         bank_name=str(bank_name),
-        account_name=str(account_name),
+        account_name=account_name,
         flw_ref=str(flw_ref) if flw_ref else None,
     )
 
@@ -122,7 +121,7 @@ def deposit_create():
         amount=amount,
         account_number=account_number,
         bank_name=bank_name,
-        account_name=account_name or "ZEBERO",
+        account_name=account_name,
         tx_ref=tx_ref,
         expires_at=int(expires_at.timestamp() * 1000),
         transfer_note=transfer_note,
