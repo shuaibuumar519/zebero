@@ -33,6 +33,7 @@ def create_virtual_account(
 ):
     """
     Create a Flutterwave NGN dynamic virtual account.
+    Always try to force account name to ZEBERO.
     """
 
     if not email:
@@ -49,6 +50,10 @@ def create_virtual_account(
     if amount <= 0:
         raise ValueError("Amount must be greater than zero")
 
+    # Force name to ZEBERO
+    firstname = "ZEBERO"
+    lastname = "ZEBERO"
+
     payload = {
         "email": email,
         "amount": amount,
@@ -56,13 +61,10 @@ def create_virtual_account(
         "tx_ref": tx_ref,
         "is_permanent": False,
         "expires": int(expires),
+        "firstname": firstname,
+        "lastname": lastname,
+        "narration": "ZEBERO",
     }
-
-    if firstname:
-        payload["firstname"] = firstname
-
-    if lastname:
-        payload["lastname"] = lastname
 
     if phone_number:
         payload["phonenumber"] = phone_number
@@ -97,6 +99,7 @@ def create_virtual_account(
         "message": data.get("message"),
         "account_number": account.get("account_number"),
         "bank_name": account.get("bank_name"),
+        "account_name": "ZEBERO",
         "amount": account.get("amount", amount),
         "tx_ref": account.get("tx_ref", tx_ref),
         "flw_ref": account.get("flw_ref"),
@@ -109,24 +112,16 @@ def create_virtual_account(
 def create_bank_transfer(tx_ref, amount, email, name=None):
     """
     Compatibility wrapper used by deposit/routes.py.
-    Creates a virtual account and returns data in the shape routes.py expects.
+    Always forces account name to ZEBERO.
     """
-
-    firstname = None
-    lastname = None
-
-    if name:
-        parts = str(name).strip().split(None, 1)
-        firstname = parts[0] if parts else None
-        lastname = parts[1] if len(parts) > 1 else None
 
     try:
         result = create_virtual_account(
             email=email,
             amount=amount,
             tx_ref=tx_ref,
-            firstname=firstname,
-            lastname=lastname,
+            firstname="ZEBERO",
+            lastname="ZEBERO",
             expires=600,  # 10 minutes
         )
     except Exception as e:
@@ -135,14 +130,13 @@ def create_bank_transfer(tx_ref, amount, email, name=None):
             "message": str(e),
         }
 
-    # Normalize response to match what routes.py expects
     return {
         "status": "success",
         "message": result.get("message"),
         "data": {
             "account_number": result.get("account_number"),
             "bank_name": result.get("bank_name"),
-            "account_name": name or "ZEBERO",
+            "account_name": "ZEBERO",
             "flw_ref": result.get("flw_ref"),
             "order_ref": result.get("order_ref"),
             "amount": result.get("amount"),
@@ -152,7 +146,7 @@ def create_bank_transfer(tx_ref, amount, email, name=None):
             "transfer_account": result.get("account_number"),
             "transfer_bank": result.get("bank_name"),
             "transfer_reference": result.get("flw_ref") or result.get("order_ref"),
-            "account_name": name or "ZEBERO",
+            "account_name": "ZEBERO",
         },
     }
 
