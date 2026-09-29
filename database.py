@@ -232,6 +232,7 @@ def init_db():
                 user_id INTEGER,
                 task_id INTEGER,
                 reward REAL,
+                claim_date TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -242,6 +243,7 @@ def init_db():
                 user_id INTEGER,
                 task_id INTEGER,
                 reward REAL,
+                claim_date TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -459,6 +461,15 @@ def init_db():
             cur.execute("ALTER TABLE task_verifications ADD COLUMN IF NOT EXISTS screenshot TEXT")
         else:
             cur.execute("ALTER TABLE task_verifications ADD COLUMN screenshot TEXT")
+    except Exception:
+        pass
+
+
+    try:
+        if is_pg:
+            cur.execute("ALTER TABLE task_history ADD COLUMN IF NOT EXISTS claim_date TEXT")
+        else:
+            cur.execute("ALTER TABLE task_history ADD COLUMN claim_date TEXT")
     except Exception:
         pass
 
