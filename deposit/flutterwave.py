@@ -262,3 +262,18 @@ def create_transfer(
     except requests.RequestException as e:
         return _error(str(e))
 
+def get_banks():
+    if not FLW_SECRET_KEY:
+        return _error("FLW_SECRET_KEY is missing from .env")
+    try:
+        response = requests.get(
+            f"{BASE_URL}/banks/NG",
+            headers=headers(),
+            timeout=30,
+        )
+        try:
+            return response.json()
+        except ValueError:
+            return _error("Flutterwave returned invalid JSON.", response)
+    except requests.RequestException as e:
+        return _error(str(e))

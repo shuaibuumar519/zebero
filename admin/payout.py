@@ -1,6 +1,11 @@
 from flask import Blueprint, render_template, request, session
 from auth.admin_required import admin_required
-from deposit.flutterwave import create_transfer, get_banks
+try:
+    from deposit.flutterwave import create_transfer, get_banks
+except ImportError:
+    from deposit.flutterwave import create_transfer
+    def get_banks():
+        return {"status": "error", "data": []}
 import uuid
 
 admin_payout_bp = Blueprint("admin_payout", __name__)
