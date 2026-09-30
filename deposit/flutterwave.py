@@ -222,3 +222,43 @@ def verify_by_reference(tx_ref):
         return None
 
     return transactions[0]
+
+
+# =========================================================
+# CREATE TRANSFER (payout)
+# =========================================================
+
+def create_transfer(
+    account_bank,
+    account_number,
+    amount,
+    narration,
+    reference,
+):
+    if not FLW_SECRET_KEY:
+        return _error("FLW_SECRET_KEY is missing from .env")
+
+    payload = {
+        "account_bank": account_bank,
+        "account_number": account_number,
+        "amount": float(amount),
+        "currency": "NGN",
+        "reference": reference,
+        "narration": narration,
+        "debit_currency": "NGN",
+    }
+
+    try:
+        response = requests.post(
+            f"{BASE_URL}/transfers",
+            headers=headers(),
+            json=payload,
+            timeout=30,
+        )
+        try:
+            return response.json()
+        except ValueError:
+            return _error("Flutterwave returned invalid JSON.", response)
+    except requests.RequestException as e:
+        return _error(str(e))
+
