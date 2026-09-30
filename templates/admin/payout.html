@@ -40,8 +40,28 @@ button{margin-top:20px;width:100%;padding:14px;background:#0a8f63;color:#fff;bor
     <select name="account_bank" required>
       <option value="">Select bank</option>
       {% for bank in banks %}
-      <option value="{{ bank.code }}">{{ bank.name }}</option>
+      <option value="{{ bank.code if bank.code is defined else bank['code'] }}">{{ bank.name if bank.name is defined else bank['name'] }}</option>
       {% endfor %}
+      <option value="100">Opay</option>
+      <option value="999">PalmPay</option>
+      <option value="120001">Kuda</option>
+      <option value="058">GTBank</option>
+      <option value="033">UBA</option>
+      <option value="011">First Bank</option>
+      <option value="057">Zenith</option>
+      <option value="215">Unity Bank</option>
+      <option value="070">Fidelity</option>
+      <option value="232">Sterling</option>
+      <option value="221">Stanbic IBTC</option>
+      <option value="050">Ecobank</option>
+      <option value="076">Polaris</option>
+      <option value="035">Wema</option>
+      <option value="032">Union Bank</option>
+      <option value="082">Keystone</option>
+      <option value="101">Providus</option>
+      <option value="030">Heritage</option>
+      <option value="301">Jaiz</option>
+      <option value="103">Globus</option>
     </select>
 
     <label>Account number</label>

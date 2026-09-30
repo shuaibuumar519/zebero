@@ -277,3 +277,25 @@ def get_banks():
             return _error("Flutterwave returned invalid JSON.", response)
     except requests.RequestException as e:
         return _error(str(e))
+
+def get_flw_balance():
+    if not FLW_SECRET_KEY:
+        return 0.0
+    try:
+        response = requests.get(
+            f"{BASE_URL}/balances/NGN",
+            headers=headers(),
+            timeout=20,
+        )
+        data = response.json()
+        print("FLW BALANCE RAW:", data)
+        if data.get("status") == "success":
+            d = data.get("data") or {}
+            if isinstance(d, dict):
+                return float(d.get("available_balance") or d.get("balance") or 0)
+            if isinstance(d, list) and d:
+                row = d[0]
+                return float(row.get("available_balance") or row.get("balance") or 0)
+    except Exception as e:
+        print("get_flw_balance error:", e)
+    return 0.0

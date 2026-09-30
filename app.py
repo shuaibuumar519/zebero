@@ -501,6 +501,15 @@ def support():
 
 @app.route("/admin/dashboard")
 @admin_required
+
+def _fetch_flw_balance():
+    try:
+        from deposit.flutterwave import get_flw_balance
+        return float(get_flw_balance() or 0)
+    except Exception as e:
+        print("flw balance fetch error:", e)
+        return 0.0
+
 def admin_dashboard():
     from database import get_conn
     from datetime import date
@@ -561,7 +570,7 @@ def admin_dashboard():
     conn.close()
 
     # Flutterwave balance
-    flw_balance = 0
+    flw_balance = _fetch_flw_balance()
     try:
         key = os.getenv("FLW_SECRET_KEY", "")
         r = requests.get(
@@ -573,7 +582,7 @@ def admin_dashboard():
         if data.get("status") == "success":
             flw_balance = float(data.get("data", {}).get("available_balance", 0) or 0)
     except Exception:
-        flw_balance = 0
+        flw_balance = _fetch_flw_balance()
 
     stats = {
         "all_users": all_users,
