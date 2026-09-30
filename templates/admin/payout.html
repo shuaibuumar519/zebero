@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Withdraw</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}
+body{background:#f0f2f5;min-height:100vh;}
+.header{background:#0a8f63;color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center;}
+.header a{color:#fff;text-decoration:none;font-size:14px;}
+.box{max-width:480px;margin:24px auto;background:#fff;padding:24px;border-radius:16px;box-shadow:0 4px 20px rgba(0,0,0,.06);}
+h1{font-size:18px;margin-bottom:8px;}
+.hint{font-size:13px;color:#6b7280;margin-bottom:18px;}
+label{display:block;margin:14px 0 6px;font-size:13px;font-weight:600;}
+input,select{width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:10px;font-size:15px;}
+button{margin-top:20px;width:100%;padding:14px;background:#0a8f63;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;}
+.msg{padding:12px;border-radius:10px;margin-bottom:14px;font-size:14px;}
+.ok{background:#edf9f4;color:#087a56;}
+.err{background:#fff0f0;color:#c62828;}
+</style>
+</head>
+<body>
+<div class="header">
+  <strong>Admin Withdraw</strong>
+  <a href="/admin/dashboard">← Dashboard</a>
+</div>
+<div class="box">
+  <h1>Flutterwave Payout</h1>
+  <p class="hint">Only admin. Withdraw from Flutterwave available balance to your bank.</p>
+
+  {% if message %}<div class="msg ok">{{ message }}</div>{% endif %}
+  {% if error %}<div class="msg err">{{ error }}</div>{% endif %}
+
+  <form method="POST">
+    <label>Amount (₦)</label>
+    <input type="number" name="amount" min="100" step="1" required placeholder="5000">
+
+    <label>Bank</label>
+    <select name="account_bank" required>
+      <option value="">Select bank</option>
+      {% for bank in banks %}
+      <option value="{{ bank.code }}">{{ bank.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Account number</label>
+    <input type="text" name="account_number" required maxlength="10" placeholder="0123456789">
+
+    <label>Narration</label>
+    <input type="text" name="narration" value="ZEBERO Admin Payout">
+
+    <button type="submit">Withdraw now</button>
+  </form>
+</div>
+</body>
+</html>

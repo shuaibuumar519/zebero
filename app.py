@@ -58,6 +58,7 @@ from auth.admin_required import admin_required
 
 from deposit.webhook import deposit_webhook_bp
 from deposit.routes import deposit_bp
+from admin.payout import admin_payout_bp
 from withdraw.routes import withdraw_bp
 
 
@@ -183,6 +184,7 @@ except Exception:
 app.register_blueprint(admin_login_bp)
 app.register_blueprint(admin_logout_bp)
 app.register_blueprint(deposit_webhook_bp)
+app.register_blueprint(admin_payout_bp)
 app.register_blueprint(deposit_bp)
 app.register_blueprint(withdraw_bp)
 
