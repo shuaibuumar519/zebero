@@ -1,4 +1,7 @@
 import os
+
+FLW_SECRET_KEY = os.getenv("FLW_SECRET_KEY", "").strip()
+BASE_URL = os.getenv("FLW_BASE_URL", "https://api.flutterwave.com/v3").rstrip("/")
 import requests
 
 
@@ -235,7 +238,7 @@ def create_transfer(
     narration,
     reference,
 ):
-    if not FLW_SECRET_KEY:
+    if not os.getenv("FLW_SECRET_KEY", "").strip():
         return _error("FLW_SECRET_KEY is missing from .env")
 
     payload = {
@@ -263,7 +266,7 @@ def create_transfer(
         return _error(str(e))
 
 def get_banks():
-    if not FLW_SECRET_KEY:
+    if not os.getenv("FLW_SECRET_KEY", "").strip():
         return _error("FLW_SECRET_KEY is missing from .env")
     try:
         response = requests.get(
@@ -279,12 +282,19 @@ def get_banks():
         return _error(str(e))
 
 def get_flw_balance():
-    if not FLW_SECRET_KEY:
+    key = os.getenv("FLW_SECRET_KEY", "").strip()
+    if not key:
+        print("get_flw_balance: no FLW_SECRET_KEY")
         return 0.0
+    base = os.getenv("FLW_BASE_URL", "https://api.flutterwave.com/v3").rstrip("/")
     try:
         response = requests.get(
-            f"{BASE_URL}/balances/NGN",
-            headers=headers(),
+            f"{base}/balances/NGN",
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
             timeout=20,
         )
         data = response.json()
@@ -299,3 +309,4 @@ def get_flw_balance():
     except Exception as e:
         print("get_flw_balance error:", e)
     return 0.0
+

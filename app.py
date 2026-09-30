@@ -502,6 +502,8 @@ def support():
 @app.route("/admin/dashboard")
 @admin_required
 
+
+
 def _fetch_flw_balance():
     try:
         from deposit.flutterwave import get_flw_balance
@@ -514,94 +516,77 @@ def admin_dashboard():
     from database import get_conn
     from datetime import date
 
-    today = str(date.today())
-
-    conn = get_conn()
-
-    all_users = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-
-    # today users (if created_at exists)
     try:
-        today_users = conn.execute(
-            "SELECT COUNT(*) FROM users WHERE date(created_at)=?",
-            (today,),
-        ).fetchone()[0]
-    except Exception:
-        today_users = 0
-
-    try:
-        all_deposits = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM deposits WHERE status='successful'"
-        ).fetchone()[0]
-        today_deposits = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM deposits WHERE status='successful' AND date(created_at)=?",
-            (today,),
-        ).fetchone()[0]
-    except Exception:
-        all_deposits = 0
-        today_deposits = 0
-
-    try:
-        all_withdrawals = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE status='successful'"
-        ).fetchone()[0]
-        today_withdrawals = conn.execute(
-            "SELECT COALESCE(SUM(amount),0) FROM withdrawals WHERE status='successful' AND date(created_at)=?",
-            (today,),
-        ).fetchone()[0]
-    except Exception:
-        all_withdrawals = 0
-        today_withdrawals = 0
-
-    try:
-        all_tasks = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
-    except Exception:
-        all_tasks = 0
-
-    # click ads = task claims / verifications count
-    try:
-        all_clicks = conn.execute("SELECT COUNT(*) FROM task_history").fetchone()[0]
-    except Exception:
-        try:
-            all_clicks = conn.execute("SELECT COUNT(*) FROM verifications").fetchone()[0]
-        except Exception:
-            all_clicks = 0
-
-    conn.close()
-
-    # Flutterwave balance
-    flw_balance = _fetch_flw_balance()
-    try:
-        key = os.getenv("FLW_SECRET_KEY", "")
-        r = requests.get(
-            "https://api.flutterwave.com/v3/balances/NGN",
-            headers={"Authorization": f"Bearer {key}"},
-            timeout=15,
-        )
-        data = r.json()
-        if data.get("status") == "success":
-            flw_balance = float(data.get("data", {}).get("available_balance", 0) or 0)
-    except Exception:
         flw_balance = _fetch_flw_balance()
+    except Exception:
+        flw_balance = 0.0
 
     stats = {
-        "all_users": all_users,
-        "today_users": today_users,
-        "all_deposits": float(all_deposits or 0),
-        "today_deposits": float(today_deposits or 0),
-        "all_withdrawals": float(all_withdrawals or 0),
-        "today_withdrawals": float(today_withdrawals or 0),
+        "all_users": 0,
+        "today_users": 0,
+        "all_deposits": 0,
+        "today_deposits": 0,
+        "all_withdrawals": 0,
+        "today_withdrawals": 0,
         "flw_balance": flw_balance,
-        "all_tasks": all_tasks,
-        "all_clicks": all_clicks,
+        "all_tasks": 0,
+        "all_clicks": 0,
     }
+
+    today = str(date.today())
+    try:
+        conn = get_conn()
+        try:
+            stats["all_users"] = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
+        except Exception:
+            try:
+                stats["all_users"] = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+            except Exception:
+                pass
+        try:
+            stats["today_users"] = conn.execute(
+                "SELECT COUNT(*) AS c FROM users WHERE date(created_at)=?", (today,)
+            ).fetchone()["c"]
+        except Exception:
+            pass
+        try:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE status='successful'"
+            ).fetchone()
+            stats["all_deposits"] = float(row["s"] if hasattr(row, "keys") else row[0] or 0)
+        except Exception:
+            pass
+        try:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE status='successful' AND date(created_at)=?",
+                (today,),
+            ).fetchone()
+            stats["today_deposits"] = float(row["s"] if hasattr(row, "keys") else row[0] or 0)
+        except Exception:
+            pass
+        try:
+            row = conn.execute(
+                "SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE status IN ('successful','completed','paid')"
+            ).fetchone()
+            stats["all_withdrawals"] = float(row["s"] if hasattr(row, "keys") else row[0] or 0)
+        except Exception:
+            pass
+        try:
+            stats["all_tasks"] = conn.execute("SELECT COUNT(*) AS c FROM tasks").fetchone()["c"]
+        except Exception:
+            try:
+                stats["all_tasks"] = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
+            except Exception:
+                pass
+        conn.close()
+    except Exception as e:
+        print("admin stats error:", e)
 
     return render_template(
         "admin/dashboard.html",
-        admin=session.get("admin_username", "admin"),
+        admin=session.get("admin_username") or "Admin",
         stats=stats,
     )
-
 
 @app.route("/admin/users")
 @admin_required
