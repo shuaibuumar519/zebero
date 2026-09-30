@@ -504,6 +504,9 @@ def support():
 
 
 
+@app.route("/admin/dashboard")
+@admin_required
+
 def _fetch_flw_balance():
     try:
         from deposit.flutterwave import get_flw_balance
@@ -516,68 +519,66 @@ def admin_dashboard():
     from database import get_conn
     from datetime import date
 
+    flw_balance = 0.0
     try:
-        flw_balance = _fetch_flw_balance()
-    except Exception:
-        flw_balance = 0.0
+        flw_balance = float(_fetch_flw_balance() or 0)
+    except Exception as e:
+        print("flw in dashboard:", e)
 
     stats = {
         "all_users": 0,
         "today_users": 0,
-        "all_deposits": 0,
-        "today_deposits": 0,
-        "all_withdrawals": 0,
-        "today_withdrawals": 0,
+        "all_deposits": 0.0,
+        "today_deposits": 0.0,
+        "all_withdrawals": 0.0,
+        "today_withdrawals": 0.0,
         "flw_balance": flw_balance,
         "all_tasks": 0,
         "all_clicks": 0,
     }
-
     today = str(date.today())
     try:
         conn = get_conn()
-        try:
-            stats["all_users"] = conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]
-        except Exception:
+        def _one(sql, params=None):
             try:
-                stats["all_users"] = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-            except Exception:
-                pass
+                cur = conn.execute(sql, params) if params else conn.execute(sql)
+                row = cur.fetchone()
+                if row is None:
+                    return 0
+                try:
+                    return row["c"] if "c" in row.keys() else row[0]
+                except Exception:
+                    try:
+                        return row["s"]
+                    except Exception:
+                        return row[0]
+            except Exception as ex:
+                print("stat query:", ex)
+                return 0
+        stats["all_users"] = int(_one("SELECT COUNT(*) AS c FROM users") or 0)
         try:
-            stats["today_users"] = conn.execute(
+            stats["today_users"] = int(_one(
                 "SELECT COUNT(*) AS c FROM users WHERE date(created_at)=?", (today,)
-            ).fetchone()["c"]
+            ) or 0)
         except Exception:
             pass
+        stats["all_deposits"] = float(_one(
+            "SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE status IN ('successful','success','completed')"
+        ) or 0)
         try:
-            row = conn.execute(
-                "SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE status='successful'"
-            ).fetchone()
-            stats["all_deposits"] = float(row["s"] if hasattr(row, "keys") else row[0] or 0)
-        except Exception:
-            pass
-        try:
-            row = conn.execute(
-                "SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE status='successful' AND date(created_at)=?",
+            stats["today_deposits"] = float(_one(
+                "SELECT COALESCE(SUM(amount),0) AS s FROM deposits WHERE status IN ('successful','success','completed') AND date(created_at)=?",
                 (today,),
-            ).fetchone()
-            stats["today_deposits"] = float(row["s"] if hasattr(row, "keys") else row[0] or 0)
+            ) or 0)
         except Exception:
             pass
         try:
-            row = conn.execute(
-                "SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE status IN ('successful','completed','paid')"
-            ).fetchone()
-            stats["all_withdrawals"] = float(row["s"] if hasattr(row, "keys") else row[0] or 0)
+            stats["all_withdrawals"] = float(_one(
+                "SELECT COALESCE(SUM(amount),0) AS s FROM withdrawals WHERE status IN ('successful','completed','paid','success')"
+            ) or 0)
         except Exception:
             pass
-        try:
-            stats["all_tasks"] = conn.execute("SELECT COUNT(*) AS c FROM tasks").fetchone()["c"]
-        except Exception:
-            try:
-                stats["all_tasks"] = conn.execute("SELECT COUNT(*) FROM tasks").fetchone()[0]
-            except Exception:
-                pass
+        stats["all_tasks"] = int(_one("SELECT COUNT(*) AS c FROM tasks") or 0)
         conn.close()
     except Exception as e:
         print("admin stats error:", e)
