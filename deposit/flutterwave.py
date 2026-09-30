@@ -4,6 +4,14 @@ FLW_SECRET_KEY = os.getenv("FLW_SECRET_KEY", "").strip()
 BASE_URL = os.getenv("FLW_BASE_URL", "https://api.flutterwave.com/v3").rstrip("/")
 import requests
 
+def headers():
+    key = os.getenv("FLW_SECRET_KEY", "").strip()
+    return {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
 
 FLUTTERWAVE_BASE_URL = "https://api.flutterwave.com/v3"
 
@@ -231,40 +239,6 @@ def verify_by_reference(tx_ref):
 # CREATE TRANSFER (payout)
 # =========================================================
 
-def create_transfer(
-    account_bank,
-    account_number,
-    amount,
-    narration,
-    reference,
-):
-    if not os.getenv("FLW_SECRET_KEY", "").strip():
-        return _error("FLW_SECRET_KEY is missing from .env")
-
-    payload = {
-        "account_bank": account_bank,
-        "account_number": account_number,
-        "amount": float(amount),
-        "currency": "NGN",
-        "reference": reference,
-        "narration": narration,
-        "debit_currency": "NGN",
-    }
-
-    try:
-        response = requests.post(
-            f"{BASE_URL}/transfers",
-            headers=headers(),
-            json=payload,
-            timeout=30,
-        )
-        try:
-            return response.json()
-        except ValueError:
-            return _error("Flutterwave returned invalid JSON.", response)
-    except requests.RequestException as e:
-        return _error(str(e))
-
 def get_banks():
     if not os.getenv("FLW_SECRET_KEY", "").strip():
         return _error("FLW_SECRET_KEY is missing from .env")
@@ -309,4 +283,39 @@ def get_flw_balance():
     except Exception as e:
         print("get_flw_balance error:", e)
     return 0.0
+
+def create_transfer(account_bank, account_number, amount, narration, reference):
+    key = os.getenv("FLW_SECRET_KEY", "").strip()
+    if not key:
+        return {"status": "error", "message": "FLW_SECRET_KEY is missing"}
+    base = os.getenv("FLW_BASE_URL", "https://api.flutterwave.com/v3").rstrip("/")
+    payload = {
+        "account_bank": str(account_bank),
+        "account_number": str(account_number),
+        "amount": float(amount),
+        "currency": "NGN",
+        "reference": reference,
+        "narration": narration or "ZEBERO Admin Payout",
+        "debit_currency": "NGN",
+    }
+    hdrs = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    try:
+        response = requests.post(
+            f"{base}/transfers",
+            headers=hdrs,
+            json=payload,
+            timeout=30,
+        )
+        try:
+            data = response.json()
+            print("CREATE_TRANSFER RESULT:", data)
+            return data
+        except ValueError:
+            return {"status": "error", "message": "Invalid JSON", "http_status": response.status_code, "response": response.text}
+    except requests.RequestException as e:
+        return {"status": "error", "message": str(e)}
 
